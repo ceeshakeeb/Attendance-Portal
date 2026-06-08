@@ -1,0 +1,37 @@
+body{
+font-family:Arial,sans-serif;
+background:#f4f4f4;
+margin:0;
+padding:20px;
+}
+.card{
+background:#fff;
+padding:15px;
+margin-bottom:15px;
+border-radius:10px;
+box-shadow:0 2px 5px rgba(0,0,0,.1);
+}
+.calendar{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:5px;
+}
+.day{
+padding:12px;
+text-align:center;
+border-radius:6px;
+font-size:14px;
+}
+.present{background:#22c55e;color:white;}
+.absent{background:#fecaca;}
+.leave{background:#fb923c;color:white;}
+.paidleave{background:#60a5fa;color:white;}
+.weekoff{background:#8b5cf6;color:white;}
+.holiday{background:#facc15;}
+.compoff{background:#06b6d4;color:white;}
+button{
+padding:10px 15px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
