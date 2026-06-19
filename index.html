@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Airdoor HR Portal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: { primary: { DEFAULT: '#0f766e', foreground: '#fff' } }
+    }
+  }
+}
+</script>
+<style>
+  :root { --primary: #0f766e; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; }
+  .sidebar { width: 240px; min-height: 100vh; background: #1e293b; color: #e2e8f0; position: fixed; top: 0; left: 0; z-index: 40; display: flex; flex-direction: column; }
+  .main { margin-left: 240px; min-height: 100vh; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; border-radius: 8px; margin: 2px 8px; font-size: 14px; color: #94a3b8; transition: all .15s; }
+  .nav-item:hover { background: #334155; color: #fff; }
+  .nav-item.active { background: #0f766e; color: #fff; }
+  .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 24px; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  .badge-purple { background: #f3e8ff; color: #7e22ce; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: #0f766e; color: #fff; }
+  .btn-primary:hover { background: #0d6460; }
+  .btn-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+  .btn-outline:hover { background: #f9fafb; }
+  .btn-danger { background: #ef4444; color: #fff; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-success { background: #22c55e; color: #fff; }
+  .btn-success:hover { background: #16a34a; }
+  .input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; transition: border .15s; box-sizing: border-box; }
+  .input:focus { border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,.1); }
+  .label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 12px 14px; font-size: 14px; border-bottom: 1px solid #f1f5f9; }
+  tr:hover td { background: #f8fafc; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .modal { background: #fff; border-radius: 16px; padding: 28px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .stat-card { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  select.input { cursor: pointer; }
+  .print-only { display: none; }
+  @media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    .main { margin-left: 0; }
+  }
+  /* Calendar */
+  .cal-day { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 13px; cursor: default; }
+  .cal-present { background: #dcfce7; color: #166534; }
+  .cal-absent { background: #fee2e2; color: #991b1b; }
+  .cal-half { background: #fef9c3; color: #854d0e; }
+  .cal-leave { background: #dbeafe; color: #1e40af; }
+  .cal-holiday { background: #f3e8ff; color: #7e22ce; }
+  .cal-sunday { background: #f1f5f9; color: #94a3b8; }
+  .toast { position: fixed; bottom: 24px; right: 24px; z-index: 999; background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; animation: slideUp .3s ease; }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center" style="display:none!important">
+  <div class="card w-full max-w-sm shadow-xl">
+    <div class="text-center mb-6">
+      <div class="inline-flex items-center gap-2 mb-2">
+        <div style="width:36px;height:36px;background:#0f766e;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:18px;">A</div>
+        <span style="font-size:20px;font-weight:700;color:#1e293b;">Airdoor</span>
+      </div>
+      <p class="text-gray-500 text-sm">HR Portal — Sign in to continue</p>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="label">Username</label>
+        <input id="loginUser" class="input" placeholder="Enter username" />
+      </div>
+      <div>
+        <label class="label">Password</label>
+        <input id="loginPass" class="input" type="password" placeholder="Enter password" />
+      </div>
+      <p id="loginErr" class="text-red-500 text-sm hidden"></p>
+      <button class="btn btn-primary w-full justify-center" onclick="doLogin()">Sign In</button>
+    </div>
+    <p class="text-xs text-gray-400 text-center mt-4">admin / admin123 &nbsp;·&nbsp; john / emp123</p>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="appShell" style="display:none">
+  <!-- Sidebar -->
+  <div class="sidebar no-print" id="sidebar">
+    <div style="padding:20px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155">
+      <div style="width:32px;height:32px;background:#0f766e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;">A</div>
+      <span style="font-weight:700;font-size:15px;">Airdoor HR</span>
+    </div>
+    <nav id="sideNav" style="flex:1;padding:12px 0;overflow-y:auto"></nav>
+    <div style="padding:12px 8px;border-top:1px solid #334155">
+      <div id="sideUser" style="padding:8px 12px;font-size:13px;color:#94a3b8;"></div>
+      <div class="nav-item" onclick="doLogout()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </div>
+    </div>
+  </div>
+  <!-- Main content -->
+  <div class="main" id="mainContent" style="padding:28px"></div>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalInner"></div>
+</div>
+
+<div id="toastEl" class="toast" style="display:none"></div>
+
+<script>
+// ===================== DATA LAYER =====================
+const USERS_KEY='hr_users',ATT_KEY='hr_att',LEAVE_KEY='hr_leaves',HOL_KEY='hr_holidays',SAL_KEY='hr_salary';
+
+const SEED_USERS=[
+  {id:1,username:'admin',password:'admin123',name:'Admin User',role:'admin',email:'admin@airdoor.com',phone:'',designation:'HR Manager',department:'HR',monthlySalary:0,isActive:true,createdAt:'2024-01-01'},
+  {id:2,username:'john',password:'emp123',name:'John Mathew',role:'employee',email:'john@airdoor.com',phone:'+91 9876543210',designation:'Software Engineer',department:'Engineering',monthlySalary:50000,isActive:true,createdAt:'2024-01-15'},
+  {id:3,username:'priya',password:'emp123',name:'Priya Nair',role:'employee',email:'priya@airdoor.com',phone:'+91 9876543211',designation:'Designer',department:'Design',monthlySalary:45000,isActive:true,createdAt:'2024-01-20'},
+  {id:4,username:'ravi',password:'emp123',name:'Ravi Kumar',role:'employee',email:'ravi@airdoor.com',phone:'+91 9876543212',designation:'QA Engineer',department:'Engineering',monthlySalary:42000,isActive:true,createdAt:'2024-02-01'},
+];
+const SEED_HOL=[
+  {id:1,name:'Republic Day',date:'2025-01-26'},
+  {id:2,name:'Holi',date:'2025-03-17'},
+  {id:3,name:'Independence Day',date:'2025-08-15'},
+  {id:4,name:'Gandhi Jayanti',date:'2025-10-02'},
+  {id:5,name:'Diwali',date:'2025-10-20'},
+  {id:6,name:'Christmas',date:'2025-12-25'},
+];
+
+function load(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback;}catch{return fallback;}}
+function save(key,val){localStorage.setItem(key,JSON.stringify(val));}
+function getUsers(){return load(USERS_KEY,SEED_USERS);}
+function saveUsers(u){save(USERS_KEY,u);}
+function getAtt(){return load(ATT_KEY,[]);}
+function saveAtt(a){save(ATT_KEY,a);}
+function getLeaves(){return load(LEAVE_KEY,[]);}
+function saveLeaves(l){save(LEAVE_KEY,l);}
+function getHols(){return load(HOL_KEY,SEED_HOL);}
+function saveHols(h){save(HOL_KEY,h);}
+function getSal(){return load(SAL_KEY,[]);}
+function saveSal(s){save(SAL_KEY,s);}
+function nextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
+function today(){return new Date().toISOString().slice(0,10);}
+function fmtDate(d){if(!d)return'';const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function monthName(m){return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1];}
+function rupee(n){return'₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+// ===================== STATE =====================
+let currentUser=null;
+
+function init(){
+  // seed if first run
+  if(!localStorage.getItem(USERS_KEY)) save(USERS_KEY,SEED_USERS);
+  if(!localStorage.getItem(HOL_KEY)) save(HOL_KEY,SEED_HOL);
+  const saved=sessionStorage.getItem('hr_session');
+  if(saved){
+    currentUser=JSON.parse(saved);
+    showApp();
+  } else {
+    showLogin();
+  }
+}
+
+function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+  const users=getUsers();
+  const found=users.find(x=>x.username===u&&x.password===p&&x.isActive);
+  if(!found){
+    const el=document.getElementById('loginErr');
+    el.textContent='Invalid username or password';
+    el.classList.remove('hidden');
+    return;
+  }
+  currentUser=found;
+  sessionStorage.setItem('hr_session',JSON.stringify(found));
+  showApp();
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('loginPage').style.display!=='none')doLogin();});
+
+function doLogout(){
+  currentUser=null;
+  sessionStorage.removeItem('hr_session');
+  showLogin();
+}
+
+function showLogin(){
+  document.getElementById('loginPage').style.cssText='';
+  document.getElementById('appShell').style.display='none';
+}
+
+function showApp(){
+  document.getElementById('loginPage').style.cssText='display:none!important';
+  document.getElementById('appShell').style.display='';
+  renderSidebar();
+  const hash=location.hash.slice(1)||'/';
+  navigate(currentUser.role==='admin'?'/admin/dashboard':'/dashboard');
+}
+
+// ===================== SIDEBAR =====================
+const ADMIN_NAV=[
+  {label:'Dashboard',icon:'grid',path:'/admin/dashboard'},
+  {label:'Manage Attendance',icon:'calendar',path:'/admin/attendance'},
+  {label:'Manage Leaves',icon:'file',path:'/admin/leaves'},
+  {label:'Staff Directory',icon:'users',path:'/admin/staff'},
+  {label:'Payroll',icon:'dollar',path:'/admin/salary'},
+  {label:'Holidays',icon:'sun',path:'/admin/holidays'},
+  {label:'Reports',icon:'bar',path:'/admin/reports'},
+];
+const EMP_NAV=[
+  {label:'Dashboard',icon:'grid',path:'/dashboard'},
+  {label:'Submit Attendance',icon:'check',path:'/attendance/submit'},
+  {label:'Attendance History',icon:'calendar',path:'/attendance/history'},
+  {label:'Apply Leave',icon:'file',path:'/leaves/apply'},
+  {label:'Leave History',icon:'list',path:'/leaves/history'},
+  {label:'My Profile',icon:'user',path:'/profile'},
+];
+
+const ICONS={
+  grid:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
+  calendar:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  file:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  users:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  dollar:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  sun:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+  bar:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  check:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+  list:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+  user:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+};
+
+let currentPath='';
+function renderSidebar(){
+  const nav=currentUser.role==='admin'?ADMIN_NAV:EMP_NAV;
+  document.getElementById('sideNav').innerHTML=nav.map(n=>`
+    <div class="nav-item ${currentPath===n.path?'active':''}" onclick="navigate('${n.path}')">
+      ${ICONS[n.icon]||''} ${n.label}
+    </div>`).join('');
+  document.getElementById('sideUser').innerHTML=`
+    <div style="font-weight:600;color:#e2e8f0;font-size:13px">${currentUser.name}</div>
+    <div style="font-size:11px;text-transform:capitalize">${currentUser.role}</div>`;
+}
+
+// ===================== ROUTER =====================
+function navigate(path){
+  currentPath=path;
+  renderSidebar();
+  const el=document.getElementById('mainContent');
+  const pages={
+    '/admin/dashboard':pageAdminDashboard,
+    '/admin/attendance':pageAdminAttendance,
+    '/admin/leaves':pageAdminLeaves,
+    '/admin/staff':pageAdminStaff,
+    '/admin/salary':pageAdminSalary,
+    '/admin/holidays':pageAdminHolidays,
+    '/admin/reports':pageAdminReports,
+    '/dashboard':pageEmpDashboard,
+    '/attendance/submit':pageSubmitAtt,
+    '/attendance/history':pageAttHistory,
+    '/leaves/apply':pageApplyLeave,
+    '/leaves/history':pageLeaveHistory,
+    '/profile':pageProfile,
+  };
+  if(pages[path]) el.innerHTML=pages[path]();
+  else el.innerHTML='<div class="card"><p class="text-gray-500">Page not found.</p></div>';
+}
+
+// ===================== HELPERS =====================
+function attBadge(s){
+  const map={present:'badge-green',absent:'badge-red',half_day:'badge-yellow',sunday_work:'badge-purple',holiday_work:'badge-purple',leave:'badge-blue',pending:'badge-yellow',approved:'badge-green',rejected:'badge-red'};
+  const label={present:'Present',absent:'Absent',half_day:'Half Day',sunday_work:'Sunday Work',holiday_work:'Holiday Work',leave:'Leave',pending:'Pending',approved:'Approved',rejected:'Rejected'};
+  return`<span class="badge ${map[s]||'badge-gray'}">${label[s]||s}</span>`;
+}
+
+function calcSalary(userId, month, year){
+  const att=getAtt().filter(a=>a.userId===userId&&a.status==='approved');
+  const hols=getHols();
+  let paid=0;
+  att.forEach(a=>{
+    const d=new Date(a.date+'T00:00:00');
+    if(d.getFullYear()!==year||d.getMonth()+1!==month) return;
+    if(a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work') paid+=1;
+    if(a.type==='half_day') paid+=0.5;
+    if(a.type==='leave') paid+=1;
+  });
+  // count holidays in month
+  hols.forEach(h=>{
+    const d=new Date(h.date+'T00:00:00');
+    if(d.getFullYear()===year&&d.getMonth()+1===month) paid+=1;
+  });
+  const user=getUsers().find(u=>u.id===userId);
+  const monthly=user?Number(user.monthlySalary):0;
+  const workDays=26;
+  const gross=monthly/workDays*paid;
+  const deductions=Math.max(0,monthly-gross);
+  return{paid:Math.min(paid,workDays),workDays,gross:Math.min(gross,monthly),deductions:Math.min(deductions,monthly),net:Math.min(gross,monthly),monthly};
+}
+
+function leaveBalance(userId){
+  const leaves=getLeaves().filter(l=>l.userId===userId&&l.status==='approved');
+  const used={casual:0,sick:0,comp_off:0};
+  leaves.forEach(l=>{
+    const days=(new Date(l.endDate)-new Date(l.startDate))/(86400000)+1;
+    if(used[l.type]!==undefined) used[l.type]+=days;
+  });
+  return{casual:Math.max(0,12-used.casual),sick:Math.max(0,12-used.sick),comp_off:Math.max(0,10-used.comp_off)};
+}
+
+// ===================== ADMIN DASHBOARD =====================
+function pageAdminDashboard(){
+  const users=getUsers().filter(u=>u.role==='employee');
+  const att=getAtt();
+  const leaves=getLeaves();
+  const sal=getSal();
+  const pending=att.filter(a=>a.status==='pending').length;
+  const pendingL=leaves.filter(l=>l.status==='pending').length;
+  const absentToday=att.filter(a=>a.date===today()&&a.type==='absent'&&a.status==='approved').length;
+  return`
+  <div>
+    <h1 style="font-size:26px;font-weight:700;color:#1e293b;margin-bottom:4px">Admin Dashboard</h1>
+    <p style="color:#64748b;margin-bottom:24px">Overview of workforce attendance, leaves, and payroll.</p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+      ${statCard('Pending Attendance',pending,'Requires approval','#0f766e','click navigate("/admin/attendance")')}
+      ${statCard('Pending Leaves',pendingL,'Leave requests','#f59e0b')}
+      ${statCard('Absent Today',absentToday,'Staff absent','#ef4444')}
+      ${statCard('Total Staff',users.length,'Active employees','#3b82f6')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <h3 style="font-weight:600;margin-bottom:16px">Recent Attendance Requests</h3>
+        ${att.filter(a=>a.status==='pending').slice(0,5).map(a=>{
+          const u=getUsers().find(x=>x.id===a.userId);
+          return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9">
+            <div><div style="font-weight:500;font-size:14px">${u?u.name:'Unknown'}</div><div style="font-size:12px;color:#64748b">${fmtDate(a.date)} · ${a.type.replace('_',' ')}</div></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-success" style="padding:4px 10px;font-size:12px" onclick="approveAtt(${a.id})">✓</button>
+              <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="rejectAtt(${a.id})">✗</button>
+            </div>
+          </div>`;
+        }).join('')||'<p style="color:#94a3b8;font-size:14px">No pending requests</p>'}
+      </div>
+      <div class="card">
+        <h3 style="font-weight:600;margin-bottom:16px">Staff Overview</h3>
+        ${users.map(u=>{
+          const todayAtt=att.find(a=>a.userId===u.id&&a.date===today());
+          const status=todayAtt?todayAtt.type:'Not Submitted';
+          return`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9">
+            <div style="width:36px;height:36px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex-shrink:0">${u.name.charAt(0)}</div>
+            <div style="flex:1"><div style="font-weight:500;font-size:14px">${u.name}</div><div style="font-size:12px;color:#64748b">${u.designation||u.department||''}</div></div>
+            ${attBadge(status)}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function statCard(title,val,sub,color,clickHandler=''){
+  return`<div class="stat-card" style="cursor:${clickHandler?'pointer':'default'}" ${clickHandler?`onclick="${clickHandler}"`:''}>
+    <div style="font-size:13px;color:#64748b;margin-bottom:8px">${title}</div>
+    <div style="font-size:32px;font-weight:700;color:${color}">${val}</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:4px">${sub}</div>
+  </div>`;
+}
+
+// ===================== ADMIN ATTENDANCE =====================
+function pageAdminAttendance(){
+  const att=getAtt();
+  const users=getUsers().filter(u=>u.role==='employee');
+  return`
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div><h1 style="font-size:22px;font-weight:700">Manage Attendance</h1><p style="color:#64748b;font-size:14px">Review and approve staff attendance.</p></div>
+    </div>
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${att.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No attendance records</td></tr>':
+            att.slice().reverse().map(a=>{
+              const u=users.find(x=>x.id===a.userId);
+              return`<tr>
+                <td><div style="font-weight:500">${u?u.name:'?'}</div><div style="font-size:12px;color:#64748b">${u?u.designation||'':''}</div></td>
+                <td>${fmtDate(a.date)}</td>
+                <td>${attBadge(a.type)}</td>
+                <td>${attBadge(a.status)}</td>
+                <td style="max-width:160px;font-size:13px;color:#64748b">${a.notes||'—'}</td>
+                <td>
+                  ${a.status==='pending'?`
+                    <button class="btn btn-success" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="approveAtt(${a.id})">Approve</button>
+                    <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="rejectAtt(${a.id})">Reject</button>`
+                  :`<span style="color:#94a3b8;font-size:13px">${a.status}</span>`}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function approveAtt(id){
+  const att=getAtt();
+  const i=att.findIndex(a=>a.id===id);
+  if(i>=0){att[i].status='approved';saveAtt(att);}
+  navigate(currentPath);
+  toast('Attendance approved');
+}
+function rejectAtt(id){
+  const att=getAtt();
+  const i=att.findIndex(a=>a.id===id);
+  if(i>=0){att[i].status='rejected';saveAtt(att);}
+  navigate(currentPath);
+  toast('Attendance rejected');
+}
+
+// ===================== ADMIN LEAVES =====================
+function pageAdminLeaves(){
+  const leaves=getLeaves();
+  const users=getUsers();
+  return`
+  <div>
+    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Manage Leaves</h1><p style="color:#64748b;font-size:14px">Review and approve leave requests.</p></div>
+    <div class="card"><div style="overflow-x:auto"><table>
+      <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${leaves.length===0?'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:32px">No leave requests</td></tr>':
+        leaves.slice().reverse().map(l=>{
+          const u=users.find(x=>x.id===l.userId);
+          return`<tr>
+            <td><div style="font-weight:500">${u?u.name:'?'}</div></td>
+            <td>${attBadge(l.type)}</td>
+            <td>${fmtDate(l.startDate)}</td>
+            <td>${fmtDate(l.endDate)}</td>
+            <td style="max-width:160px;font-size:13px;color:#64748b">${l.reason||'—'}</td>
+            <td>${attBadge(l.status)}</td>
+            <td>
+              ${l.status==='pending'?`
+                <button class="btn btn-success" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="approveLeave(${l.id})">Approve</button>
+                <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="rejectLeave(${l.id})">Reject</button>`
+              :`<span style="color:#94a3b8;font-size:13px">${l.status}</span>`}
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div></div>
+  </div>`;
+}
+
+function approveLeave(id){
+  const leaves=getLeaves();
+  const i=leaves.findIndex(l=>l.id===id);
+  if(i>=0){leaves[i].status='approved';saveLeaves(leaves);}
+  navigate(currentPath);toast('Leave approved');
+}
+function rejectLeave(id){
+  const leaves=getLeaves();
+  const i=leaves.findIndex(l=>l.id===id);
+  if(i>=0){leaves[i].status='rejected';saveLeaves(leaves);}
+  navigate(currentPath);toast('Leave rejected');
+}
+
+// ===================== ADMIN STAFF =====================
+function pageAdminStaff(){
+  const users=getUsers().filter(u=>u.role==='employee');
+  return`
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div><h1 style="font-size:22px;font-weight:700">Staff Directory</h1><p style="color:#64748b;font-size:14px">Manage employees.</p></div>
+      <button class="btn btn-primary" onclick="openAddStaff()">+ Add Employee</button>
+    </div>
+    <div class="card"><div style="overflow-x:auto"><table>
+      <thead><tr><th>Name</th><th>Username</th><th>Department</th><th>Designation</th><th>Salary/mo</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${users.map(u=>`<tr>
+          <td><div style="display:flex;align-items:center;gap:10px">
+            <div style="width:32px;height:32px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0">${u.name.charAt(0)}</div>
+            <div><div style="font-weight:500">${u.name}</div><div style="font-size:12px;color:#64748b">${u.email}</div></div>
+          </div></td>
+          <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px">${u.username}</code></td>
+          <td>${u.department||'—'}</td>
+          <td>${u.designation||'—'}</td>
+          <td>${rupee(u.monthlySalary)}</td>
+          <td><span class="badge ${u.isActive?'badge-green':'badge-red'}">${u.isActive?'Active':'Inactive'}</span></td>
+          <td>
+            <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="openEditStaff(${u.id})">Edit</button>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteStaff(${u.id})">Delete</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>
+  </div>`;
+}
+
+function staffFormHtml(u={}){
+  return`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="grid-column:1/-1"><label class="label">Full Name</label><input class="input" id="sf_name" value="${u.name||''}" /></div>
+      <div><label class="label">Username</label><input class="input" id="sf_user" value="${u.username||''}" /></div>
+      <div><label class="label">Password ${u.id?'(leave blank to keep)':''}</label><input class="input" type="password" id="sf_pass" /></div>
+      <div><label class="label">Email</label><input class="input" id="sf_email" value="${u.email||''}" /></div>
+      <div><label class="label">Phone</label><input class="input" id="sf_phone" value="${u.phone||''}" /></div>
+      <div><label class="label">Department</label><input class="input" id="sf_dept" value="${u.department||''}" /></div>
+      <div><label class="label">Designation</label><input class="input" id="sf_desig" value="${u.designation||''}" /></div>
+      <div style="grid-column:1/-1"><label class="label">Monthly Salary (₹)</label><input class="input" type="number" id="sf_sal" value="${u.monthlySalary||''}" /></div>
+    </div>`;
+}
+
+function openAddStaff(){
+  openModal(`<h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Employee</h2>
+    ${staffFormHtml()}
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStaff()">Add Employee</button>
+    </div>`);
+}
+
+function openEditStaff(id){
+  const u=getUsers().find(x=>x.id===id);
+  if(!u)return;
+  openModal(`<h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Employee</h2>
+    ${staffFormHtml(u)}
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStaff(${id})">Save Changes</button>
+    </div>`);
+}
+
+function saveStaff(id){
+  const users=getUsers();
+  const name=document.getElementById('sf_name').value.trim();
+  const username=document.getElementById('sf_user').value.trim();
+  const pass=document.getElementById('sf_pass').value;
+  const email=document.getElementById('sf_email').value.trim();
+  const phone=document.getElementById('sf_phone').value.trim();
+  const dept=document.getElementById('sf_dept').value.trim();
+  const desig=document.getElementById('sf_desig').value.trim();
+  const sal=Number(document.getElementById('sf_sal').value)||0;
+  if(!name||!username){toast('Name and username are required','error');return;}
+  if(id){
+    const i=users.findIndex(u=>u.id===id);
+    if(i>=0){
+      users[i]={...users[i],name,username,email,phone,department:dept,designation:desig,monthlySalary:sal};
+      if(pass) users[i].password=pass;
+    }
+  } else {
+    if(!pass){toast('Password required','error');return;}
+    users.push({id:nextId(users),username,password:pass,name,role:'employee',email,phone,designation:desig,department:dept,monthlySalary:sal,isActive:true,createdAt:today()});
+  }
+  saveUsers(users);closeModal();navigate(currentPath);toast('Employee saved');
+}
+
+function deleteStaff(id){
+  if(!confirm('Delete this employee?'))return;
+  const users=getUsers().filter(u=>u.id!==id);
+  saveUsers(users);navigate(currentPath);toast('Employee deleted');
+}
+
+// ===================== ADMIN SALARY =====================
+function pageAdminSalary(){
+  const now=new Date();
+  const month=now.getMonth()+1;
+  const year=now.getFullYear();
+  const users=getUsers().filter(u=>u.role==='employee');
+  const sal=getSal();
+  return`
+  <div>
+    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Payroll</h1><p style="color:#64748b;font-size:14px">Calculate and approve monthly salary.</p></div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <select class="input" id="salMonth" style="width:140px" onchange="refreshSalary()">
+          ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===month?'selected':''}>${monthName(i+1)}</option>`).join('')}
+        </select>
+        <select class="input" id="salYear" style="width:100px" onchange="refreshSalary()">
+          ${[2023,2024,2025,2026].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary" onclick="runPayroll()">Run Payroll</button>
+      </div>
+      <div id="salaryTable">${renderSalaryTable(month,year)}</div>
+    </div>
+  </div>`;
+}
+
+function renderSalaryTable(month,year){
+  const users=getUsers().filter(u=>u.role==='employee');
+  return`<div style="overflow-x:auto"><table>
+    <thead><tr><th>Employee</th><th>Monthly Salary</th><th>Paid Days</th><th>Gross</th><th>Deductions</th><th>Net Pay</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>
+      ${users.map(u=>{
+        const c=calcSalary(u.id,month,year);
+        const salRec=getSal().find(s=>s.userId===u.id&&s.month===month&&s.year===year);
+        return`<tr>
+          <td><div style="font-weight:500">${u.name}</div><div style="font-size:12px;color:#64748b">${u.designation||''}</div></td>
+          <td>${rupee(c.monthly)}</td>
+          <td>${c.paid.toFixed(1)} / ${c.workDays}</td>
+          <td>${rupee(c.gross)}</td>
+          <td style="color:#ef4444">${rupee(c.deductions)}</td>
+          <td style="font-weight:600;color:#0f766e">${rupee(c.net)}</td>
+          <td>${salRec?attBadge(salRec.status):'<span class="badge badge-gray">Not Run</span>'}</td>
+          <td>${salRec&&salRec.status==='pending'?`<button class="btn btn-success" style="padding:4px 10px;font-size:12px" onclick="approveSalary(${u.id},${month},${year})">Approve</button>`:'—'}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function refreshSalary(){
+  const m=Number(document.getElementById('salMonth').value);
+  const y=Number(document.getElementById('salYear').value);
+  document.getElementById('salaryTable').innerHTML=renderSalaryTable(m,y);
+}
+
+function runPayroll(){
+  const m=Number(document.getElementById('salMonth').value);
+  const y=Number(document.getElementById('salYear').value);
+  const users=getUsers().filter(u=>u.role==='employee');
+  let sal=getSal();
+  users.forEach(u=>{
+    if(!sal.find(s=>s.userId===u.id&&s.month===m&&s.year===y)){
+      const c=calcSalary(u.id,m,y);
+      sal.push({id:nextId(sal),userId:u.id,month:m,year:y,status:'pending',...c});
+    }
+  });
+  saveSal(sal);refreshSalary();toast('Payroll generated');
+}
+
+function approveSalary(userId,month,year){
+  const sal=getSal();
+  const i=sal.findIndex(s=>s.userId===userId&&s.month===month&&s.year===year);
+  if(i>=0){sal[i].status='approved';saveSal(sal);}
+  refreshSalary();toast('Salary approved');
+}
+
+// ===================== ADMIN HOLIDAYS =====================
+function pageAdminHolidays(){
+  const hols=getHols();
+  return`
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div><h1 style="font-size:22px;font-weight:700">Holidays</h1><p style="color:#64748b;font-size:14px">Manage company holiday calendar.</p></div>
+      <button class="btn btn-primary" onclick="openAddHol()">+ Add Holiday</button>
+    </div>
+    <div class="card"><div style="overflow-x:auto"><table>
+      <thead><tr><th>Name</th><th>Date</th><th>Day</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${hols.sort((a,b)=>a.date.localeCompare(b.date)).map(h=>{
+          const d=new Date(h.date+'T00:00:00');
+          const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          return`<tr>
+            <td style="font-weight:500">${h.name}</td>
+            <td>${fmtDate(h.date)}</td>
+            <td>${days[d.getDay()]}</td>
+            <td>
+              <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="openEditHol(${h.id})">Edit</button>
+              <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteHol(${h.id})">Delete</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div></div>
+  </div>`;
+}
+
+function openAddHol(){
+  openModal(`<h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Holiday</h2>
+    <div class="space-y-3">
+      <div><label class="label">Name</label><input class="input" id="hol_name" placeholder="e.g. Diwali" /></div>
+      <div><label class="label">Date</label><input class="input" type="date" id="hol_date" /></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHol()">Add</button>
+    </div>`);
+}
+
+function openEditHol(id){
+  const h=getHols().find(x=>x.id===id);
+  if(!h)return;
+  openModal(`<h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Holiday</h2>
+    <div class="space-y-3">
+      <div><label class="label">Name</label><input class="input" id="hol_name" value="${h.name}" /></div>
+      <div><label class="label">Date</label><input class="input" type="date" id="hol_date" value="${h.date}" /></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHol(${id})">Save</button>
+    </div>`);
+}
+
+function saveHol(id){
+  const name=document.getElementById('hol_name').value.trim();
+  const date=document.getElementById('hol_date').value;
+  if(!name||!date){toast('Name and date required','error');return;}
+  const hols=getHols();
+  if(id){const i=hols.findIndex(h=>h.id===id);if(i>=0)hols[i]={...hols[i],name,date};}
+  else hols.push({id:nextId(hols),name,date});
+  saveHols(hols);closeModal();navigate(currentPath);toast('Holiday saved');
+}
+
+function deleteHol(id){
+  if(!confirm('Delete this holiday?'))return;
+  saveHols(getHols().filter(h=>h.id!==id));navigate(currentPath);toast('Deleted');
+}
+
+// ===================== ADMIN REPORTS =====================
+function pageAdminReports(){
+  const users=getUsers().filter(u=>u.role==='employee');
+  const att=getAtt();
+  const now=new Date();
+  const m=now.getMonth()+1;const y=now.getFullYear();
+  return`
+  <div>
+    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Reports</h1><p style="color:#64748b;font-size:14px">Monthly attendance and payroll summary.</p></div>
+    <div class="card"><div style="overflow-x:auto"><table>
+      <thead><tr><th>Employee</th><th>Present</th><th>Absent</th><th>Half Day</th><th>Leaves</th><th>Net Salary (${monthName(m)} ${y})</th></tr></thead>
+      <tbody>
+        ${users.map(u=>{
+          const uAtt=att.filter(a=>a.userId===u.id&&a.status==='approved'&&new Date(a.date+'T00:00:00').getMonth()+1===m&&new Date(a.date+'T00:00:00').getFullYear()===y);
+          const present=uAtt.filter(a=>a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work').length;
+          const absent=uAtt.filter(a=>a.type==='absent').length;
+          const half=uAtt.filter(a=>a.type==='half_day').length;
+          const leave=uAtt.filter(a=>a.type==='leave').length;
+          const c=calcSalary(u.id,m,y);
+          return`<tr>
+            <td><div style="font-weight:500">${u.name}</div><div style="font-size:12px;color:#64748b">${u.department||''}</div></td>
+            <td><span class="badge badge-green">${present}</span></td>
+            <td><span class="badge badge-red">${absent}</span></td>
+            <td><span class="badge badge-yellow">${half}</span></td>
+            <td><span class="badge badge-blue">${leave}</span></td>
+            <td style="font-weight:600">${rupee(c.net)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div></div>
+  </div>`;
+}
+
+// ===================== EMPLOYEE DASHBOARD =====================
+function pageEmpDashboard(){
+  const u=currentUser;
+  const att=getAtt().filter(a=>a.userId===u.id);
+  const leaves=getLeaves().filter(l=>l.userId===u.id);
+  const now=new Date();const m=now.getMonth()+1;const y=now.getFullYear();
+  const mAtt=att.filter(a=>a.status==='approved'&&new Date(a.date+'T00:00:00').getMonth()+1===m&&new Date(a.date+'T00:00:00').getFullYear()===y);
+  const present=mAtt.filter(a=>a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work').length;
+  const absent=mAtt.filter(a=>a.type==='absent').length;
+  const pendL=leaves.filter(l=>l.status==='pending').length;
+  const bal=leaveBalance(u.id);
+  const c=calcSalary(u.id,m,y);
+  const todayAtt=att.find(a=>a.date===today());
+  return`
+  <div>
+    <h1 style="font-size:26px;font-weight:700;color:#1e293b;margin-bottom:4px">Welcome, ${u.name.split(' ')[0]} 👋</h1>
+    <p style="color:#64748b;margin-bottom:24px">Here's your attendance overview for ${monthName(m)} ${y}.</p>
+    ${todayAtt?`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px;color:#166534">
+      Today's attendance: <strong>${todayAtt.type.replace(/_/g,' ')}</strong> — Status: <strong>${todayAtt.status}</strong>
+    </div>`:`<div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px;color:#854d0e">
+      You haven't submitted today's attendance yet. <span style="cursor:pointer;text-decoration:underline" onclick="navigate('/attendance/submit')">Submit now →</span>
+    </div>`}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+      ${statCard('Present Days',present,'This month','#0f766e')}
+      ${statCard('Absent Days',absent,'This month','#ef4444')}
+      ${statCard('Pending Leaves',pendL,'Awaiting approval','#f59e0b')}
+      ${statCard('Est. Net Salary',rupee(c.net),monthName(m)+' '+y,'#3b82f6')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <h3 style="font-weight:600;margin-bottom:16px">Leave Balance</h3>
+        ${[['Casual Leave',bal.casual,12],['Sick Leave',bal.sick,12],['Comp Off',bal.comp_off,10]].map(([label,used,total])=>`
+          <div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+              <span>${label}</span><span style="font-weight:600">${used} / ${total} days left</span>
+            </div>
+            <div style="background:#f1f5f9;border-radius:99px;height:6px">
+              <div style="background:#0f766e;border-radius:99px;height:6px;width:${(used/total)*100}%"></div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="card">
+        <h3 style="font-weight:600;margin-bottom:16px">Recent Attendance</h3>
+        ${att.slice().reverse().slice(0,6).map(a=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9">
+            <span style="font-size:13px;color:#374151">${fmtDate(a.date)}</span>
+            <div style="display:flex;gap:6px">${attBadge(a.type)}${attBadge(a.status)}</div>
+          </div>`).join('')||'<p style="color:#94a3b8;font-size:14px">No records yet</p>'}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===================== SUBMIT ATTENDANCE =====================
+function pageSubmitAtt(){
+  const t=today();
+  const existing=getAtt().find(a=>a.userId===currentUser.id&&a.date===t);
+  return`
+  <div style="max-width:520px">
+    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Submit Attendance</h1><p style="color:#64748b;font-size:14px">Mark your attendance for today.</p></div>
+    <div class="card">
+      ${existing?`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:16px;font-size:14px;color:#166534">
+        You already submitted attendance for today (${fmtDate(t)}) — <strong>${existing.type.replace(/_/g,' ')}</strong> [${existing.status}]
+      </div>`:''}
+      <div class="space-y-4">
+        <div><label class="label">Date</label><input class="input" type="date" id="att_date" value="${t}" max="${t}" /></div>
+        <div><label class="label">Type</label>
+          <select class="input" id="att_type">
+            <option value="present">Present</option>
+            <option value="absent">Absent</option>
+            <option value="half_day">Half Day</option>
+            <option value="sunday_work">Sunday Work</option>
+            <option value="holiday_work">Holiday Work</option>
+          </select>
+        </div>
+        <div><label class="label">Notes (optional)</label><textarea class="input" id="att_notes" rows="3" placeholder="Any additional notes..."></textarea></div>
+        <button class="btn btn-primary w-full justify-center" onclick="submitAtt()" style="width:100%;justify-content:center">Submit Attendance</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function submitAtt(){
+  const date=document.getElementById('att_date').value;
+  const type=document.getElementById('att_type').value;
+  const notes=document.getElementById('att_notes').value.trim();
+  if(!date){toast('Select a date','error');return;}
+  const att=getAtt();
+  const exists=att.find(a=>a.userId===currentUser.id&&a.date===date);
+  if(exists){toast('Attendance already submitted for this date','error');return;}
+  att.push({id:nextId(att),userId:currentUser.id,date,type,notes,status:'pending',createdAt:new Date().toISOString()});
+  saveAtt(att);navigate(currentPath);toast('Attendance submitted!');
+}
+
+// ===================== ATTENDANCE HISTORY =====================
+function pageAttHistory(){
+  const att=getAtt().filter(a=>a.userId===currentUser.id).sort((a,b)=>b.date.localeCompare(a.date));
+  return`
+  <div>
+    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Attendance History</h1><p style="color:#64748b;font-size:14px">All your attendance records.</p></div>
+    <div class="card"><div style="overflow-x:auto"><table>
+      <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        ${att.length===0?'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:32px">No records</td></tr>':
+        att.map(a=>`<tr>
+          <td>${fmtDate(a.date)}</td>
+          <td>${attBadge(a.type)}</td>
+          <td>${attBadge(a.status)}</td>
+          <td style="font-size:13px;color:#64748b">${a.notes||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>
+  </div>`;
+}
+
+// ===================== APPLY LEAVE =====================
+function pageApplyLeave(){
+  const bal=leaveBalance(currentUser.id);
+  return`
+  <div style="max-width:520px">
+    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Apply for Leave</h1><p style="color:#64748b;font-size:14px">Submit a leave request.</p></div>
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="font-weight:600;margin-bottom:12px;font-size:14px">Your Leave Balance</h3>
+      <div style="display:flex;gap:16px">
+        <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#0f766e">${bal.casual}</div><div style="font-size:12px;color:#64748b">Casual</div></div>
+        <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#3b82f6">${bal.sick}</div><div style="font-size:12px;color:#64748b">Sick</div></div>
+        <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#f59e0b">${bal.comp_off}</div><div style="font-size:12px;color:#64748b">Comp Off</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="space-y-4">
+        <div><label class="label">Leave Type</label>
+          <select class="input" id="lv_type">
+            <option value="casual">Casual Leave</option>
+            <option value="sick">Sick Leave</option>
+            <option value="comp_off">Comp Off</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><label class="label">From Date</label><input class="input" type="date" id="lv_start" /></div>
+          <div><label class="label">To Date</label><input class="input" type="date" id="lv_end" /></div>
+        </div>
+        <div><label class="label">Reason</label><textarea class="input" id="lv_reason" rows="3" placeholder="Reason for leave..."></textarea></div>
+        <button class="btn btn-primary" onclick="submitLeave()" style="width:100%;justify-content:center">Submit Leave Request</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function submitLeave(){
+  const type=document.getElementById('lv_type').value;
+  const start=document.getElementById('lv_start').value;
+  const end=document.getElementById('lv_end').value;
+  const reason=document.getElementById('lv_reason').value.trim();
+  if(!start||!end||!reason){toast('All fields required','error');return;}
+  if(start>end){toast('End date must be after start date','error');return;}
+  const leaves=getLeaves();
+  leaves.push({id:nextId(leaves),userId:currentUser.id,type,startDate:start,endDate:end,reason,status:'pending',createdAt:new Date().toISOString()});
+  saveLeaves(leaves);navigate(currentPath);toast('Leave request submitted!');
+}
+
+// ===================== LEAVE HISTORY =====================
+function pageLeaveHistory(){
+  const leaves=getLeaves().filter(l=>l.userId===currentUser.id).sort((a,b)=>b.startDate.localeCompare(a.startDate));
+  return`
+  <div>
+    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Leave History</h1><p style="color:#64748b;font-size:14px">All your leave requests.</p></div>
+    <div class="card"><div style="overflow-x:auto"><table>
+      <thead><tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th></tr></thead>
+      <tbody>
+        ${leaves.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No leave requests</td></tr>':
+        leaves.map(l=>{
+          const days=(new Date(l.endDate)-new Date(l.startDate))/(86400000)+1;
+          return`<tr>
+            <td>${attBadge(l.type)}</td>
+            <td>${fmtDate(l.startDate)}</td>
+            <td>${fmtDate(l.endDate)}</td>
+            <td>${days}</td>
+            <td style="font-size:13px;color:#64748b;max-width:160px">${l.reason}</td>
+            <td>${attBadge(l.status)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div></div>
+  </div>`;
+}
+
+// ===================== PROFILE =====================
+function pageProfile(){
+  const u=getUsers().find(x=>x.id===currentUser.id)||currentUser;
+  const now=new Date();const m=now.getMonth()+1;const y=now.getFullYear();
+  const c=calcSalary(u.id,m,y);
+  const salRec=getSal().find(s=>s.userId===u.id&&s.month===m&&s.year===y);
+  return`
+  <div style="max-width:680px">
+    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">My Profile</h1><p style="color:#64748b;font-size:14px">Personal details and salary slip.</p></div>
+    <div class="card" style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+      <div style="width:56px;height:56px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700">${u.name.charAt(0)}</div>
+      <div><div style="font-size:18px;font-weight:700">${u.name}</div><div style="color:#64748b;font-size:14px">${u.designation||u.role}</div></div>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:16px">
+      <button id="tab1" onclick="showTab('info')" style="padding:10px 20px;border:none;background:none;cursor:pointer;font-weight:600;font-size:14px;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px">Personal Info</button>
+      <button id="tab2" onclick="showTab('salary')" style="padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;color:#64748b">Salary Slip</button>
+    </div>
+    <div id="tabInfo">
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="font-weight:600;margin-bottom:16px">Contact Details</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="grid-column:1/-1"><label class="label">Full Name</label><input class="input" id="p_name" value="${u.name}" /></div>
+          <div><label class="label">Email</label><input class="input" id="p_email" value="${u.email||''}" /></div>
+          <div><label class="label">Phone</label><input class="input" id="p_phone" value="${u.phone||''}" /></div>
+        </div>
+        <div style="margin-top:12px;text-align:right"><button class="btn btn-primary" onclick="saveProfile()">Save Changes</button></div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="font-weight:600;margin-bottom:16px">Employment Details</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:14px">
+          <div><div style="color:#64748b;font-size:12px">Department</div><div style="font-weight:500">${u.department||'—'}</div></div>
+          <div><div style="color:#64748b;font-size:12px">Designation</div><div style="font-weight:500">${u.designation||'—'}</div></div>
+          <div><div style="color:#64748b;font-size:12px">Monthly Salary</div><div style="font-weight:500">${rupee(u.monthlySalary)}</div></div>
+          <div><div style="color:#64748b;font-size:12px">Username</div><div style="font-weight:500">${u.username}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-weight:600;margin-bottom:16px">Change Password</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="grid-column:1/-1"><label class="label">Current Password</label><input class="input" type="password" id="p_curpass" /></div>
+          <div><label class="label">New Password</label><input class="input" type="password" id="p_newpass" /></div>
+          <div><label class="label">Confirm</label><input class="input" type="password" id="p_confpass" /></div>
+        </div>
+        <div style="margin-top:12px;text-align:right"><button class="btn btn-outline" onclick="changePassword()">Update Password</button></div>
+      </div>
+    </div>
+    <div id="tabSalary" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="font-weight:600">Salary Slip — ${monthName(m)} ${y}</h3>
+          <button class="btn btn-outline" onclick="printSlip()">🖨 Print</button>
+        </div>
+        ${salarySlipHtml(u,c,salRec,m,y)}
+      </div>
+    </div>
+  </div>`;
+}
+
+function salarySlipHtml(u,c,salRec,m,y){
+  const now=new Date();
+  return`
+  <div id="slipContent" style="border:1px solid #e2e8f0;border-radius:10px;padding:20px">
+    <div style="display:flex;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:14px">
+      <div><div style="font-size:18px;font-weight:700;color:#0f766e">Airdoor</div><div style="font-size:12px;color:#94a3b8">Salary Slip</div></div>
+      <div style="text-align:right"><div style="font-weight:600">${monthName(m)} ${y}</div><span class="badge ${salRec&&salRec.status==='approved'?'badge-green':'badge-yellow'}">${salRec?salRec.status:'draft'}</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin-bottom:16px">
+      <div><div style="color:#64748b">Employee</div><div style="font-weight:600">${u.name}</div></div>
+      ${u.designation?`<div><div style="color:#64748b">Designation</div><div style="font-weight:600">${u.designation}</div></div>`:''}
+    </div>
+    <table style="margin-bottom:16px">
+      <thead><tr><th>Earnings</th><th>Days</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody>
+        <tr><td>Monthly Salary</td><td>${c.workDays}</td><td style="text-align:right">${rupee(c.monthly)}</td></tr>
+        <tr><td>Paid Days</td><td>${c.paid.toFixed(1)}</td><td style="text-align:right">${rupee(c.gross)}</td></tr>
+      </tbody>
+    </table>
+    <table style="margin-bottom:16px">
+      <thead><tr><th>Deductions</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody><tr><td>Loss of Pay (LOP)</td><td style="text-align:right;color:#ef4444">${rupee(c.deductions)}</td></tr></tbody>
+    </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px">
+      <span style="font-weight:600">Net Salary Payable</span>
+      <span style="font-size:20px;font-weight:700;color:#0f766e">${rupee(c.net)}</span>
+    </div>
+    <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:12px">Generated on ${now.toLocaleDateString('en-IN')} · Formula: Monthly ÷ ${c.workDays} × Paid Days</p>
+  </div>`;
+}
+
+function showTab(tab){
+  document.getElementById('tabInfo').style.display=tab==='info'?'':'none';
+  document.getElementById('tabSalary').style.display=tab==='salary'?'':'none';
+  document.getElementById('tab1').style.cssText=`padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;${tab==='info'?'font-weight:600;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px':'color:#64748b;'}`;
+  document.getElementById('tab2').style.cssText=`padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;${tab==='salary'?'font-weight:600;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px':'color:#64748b;'}`;
+}
+
+function saveProfile(){
+  const name=document.getElementById('p_name').value.trim();
+  const email=document.getElementById('p_email').value.trim();
+  const phone=document.getElementById('p_phone').value.trim();
+  if(!name){toast('Name required','error');return;}
+  const users=getUsers();
+  const i=users.findIndex(u=>u.id===currentUser.id);
+  if(i>=0){users[i]={...users[i],name,email,phone};currentUser={...currentUser,name,email,phone};sessionStorage.setItem('hr_session',JSON.stringify(currentUser));}
+  saveUsers(users);toast('Profile saved');renderSidebar();
+}
+
+function changePassword(){
+  const cur=document.getElementById('p_curpass').value;
+  const nw=document.getElementById('p_newpass').value;
+  const cf=document.getElementById('p_confpass').value;
+  const users=getUsers();
+  const u=users.find(x=>x.id===currentUser.id);
+  if(!u||u.password!==cur){toast('Current password is incorrect','error');return;}
+  if(nw.length<6){toast('New password must be at least 6 characters','error');return;}
+  if(nw!==cf){toast('Passwords do not match','error');return;}
+  const i=users.findIndex(x=>x.id===currentUser.id);
+  users[i].password=nw;saveUsers(users);toast('Password updated');
+}
+
+function printSlip(){
+  const content=document.getElementById('slipContent').innerHTML;
+  const win=window.open('','_blank');
+  win.document.write(`<html><head><title>Salary Slip</title>
+    <style>body{font-family:Arial,sans-serif;margin:32px;color:#111}
+    table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px 12px;text-align:left}
+    th{background:#f8f8f8}
+    </style></head><body>${content}</body></html>`);
+  win.document.close();win.focus();win.print();win.close();
+}
+
+// ===================== MODAL =====================
+function openModal(html){
+  document.getElementById('modalInner').innerHTML=html;
+  document.getElementById('modal').style.display='flex';
+}
+function closeModal(){
+  document.getElementById('modal').style.display='none';
+}
+
+// ===================== TOAST =====================
+function toast(msg,type='success'){
+  const el=document.getElementById('toastEl');
+  el.textContent=msg;
+  el.style.background=type==='error'?'#ef4444':'#1e293b';
+  el.style.display='block';
+  setTimeout(()=>{el.style.display='none';},3000);
+}
+
+// ===================== BOOT =====================
+init();
+</script>
+</body>
+</html>
