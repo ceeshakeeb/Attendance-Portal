@@ -1,1097 +1,1195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Airdoor HR Portal</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: { primary: { DEFAULT: '#0f766e', foreground: '#fff' } }
-    }
-  }
-}
-</script>
 <style>
-  :root { --primary: #0f766e; }
-  body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; }
-  .sidebar { width: 240px; min-height: 100vh; background: #1e293b; color: #e2e8f0; position: fixed; top: 0; left: 0; z-index: 40; display: flex; flex-direction: column; }
-  .main { margin-left: 240px; min-height: 100vh; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; border-radius: 8px; margin: 2px 8px; font-size: 14px; color: #94a3b8; transition: all .15s; }
-  .nav-item:hover { background: #334155; color: #fff; }
-  .nav-item.active { background: #0f766e; color: #fff; }
-  .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 24px; }
-  .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; }
-  .badge-green { background: #dcfce7; color: #166534; }
-  .badge-red { background: #fee2e2; color: #991b1b; }
-  .badge-yellow { background: #fef9c3; color: #854d0e; }
-  .badge-blue { background: #dbeafe; color: #1e40af; }
-  .badge-gray { background: #f1f5f9; color: #475569; }
-  .badge-purple { background: #f3e8ff; color: #7e22ce; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
-  .btn-primary { background: #0f766e; color: #fff; }
-  .btn-primary:hover { background: #0d6460; }
-  .btn-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; }
-  .btn-outline:hover { background: #f9fafb; }
-  .btn-danger { background: #ef4444; color: #fff; }
-  .btn-danger:hover { background: #dc2626; }
-  .btn-success { background: #22c55e; color: #fff; }
-  .btn-success:hover { background: #16a34a; }
-  .input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; transition: border .15s; box-sizing: border-box; }
-  .input:focus { border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,.1); }
-  .label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 4px; }
-  table { width: 100%; border-collapse: collapse; }
-  th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #e2e8f0; }
-  td { padding: 12px 14px; font-size: 14px; border-bottom: 1px solid #f1f5f9; }
-  tr:hover td { background: #f8fafc; }
-  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
-  .modal { background: #fff; border-radius: 16px; padding: 28px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
-  .stat-card { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  select.input { cursor: pointer; }
-  .print-only { display: none; }
-  @media print {
-    .no-print { display: none !important; }
-    .print-only { display: block !important; }
-    .main { margin-left: 0; }
-  }
-  /* Calendar */
-  .cal-day { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 13px; cursor: default; }
-  .cal-present { background: #dcfce7; color: #166534; }
-  .cal-absent { background: #fee2e2; color: #991b1b; }
-  .cal-half { background: #fef9c3; color: #854d0e; }
-  .cal-leave { background: #dbeafe; color: #1e40af; }
-  .cal-holiday { background: #f3e8ff; color: #7e22ce; }
-  .cal-sunday { background: #f1f5f9; color: #94a3b8; }
-  .toast { position: fixed; bottom: 24px; right: 24px; z-index: 999; background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; animation: slideUp .3s ease; }
-  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f1f5f9;color:#1e293b;}
+a{text-decoration:none;color:inherit;}
+/* Layout */
+.sidebar{width:240px;min-height:100vh;background:#1e293b;color:#e2e8f0;position:fixed;top:0;left:0;z-index:40;display:flex;flex-direction:column;}
+.main{margin-left:240px;min-height:100vh;}
+.main-pad{padding:28px 32px;}
+/* Nav */
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-radius:8px;margin:2px 8px;font-size:13px;color:#94a3b8;transition:background .15s,color .15s;}
+.nav-item:hover{background:#334155;color:#fff;}
+.nav-item.active{background:#0f766e;color:#fff;}
+/* Cards */
+.card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:20px;}
+.stat-card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600;white-space:nowrap;}
+.bg-green{background:#dcfce7;color:#166534;}
+.bg-red{background:#fee2e2;color:#991b1b;}
+.bg-yellow{background:#fef9c3;color:#854d0e;}
+.bg-blue{background:#dbeafe;color:#1e40af;}
+.bg-gray{background:#f1f5f9;color:#475569;}
+.bg-purple{background:#f3e8ff;color:#7e22ce;}
+.bg-teal{background:#ccfbf1;color:#0f766e;}
+.bg-orange{background:#ffedd5;color:#c2410c;}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s;}
+.btn:hover{opacity:.88;}
+.btn-p{background:#0f766e;color:#fff;}
+.btn-o{background:#fff;color:#374151;border:1px solid #d1d5db;}
+.btn-d{background:#ef4444;color:#fff;}
+.btn-s{background:#22c55e;color:#fff;}
+.btn-sm{padding:4px 10px;font-size:12px;}
+/* Forms */
+.input{width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;outline:none;background:#fff;transition:border-color .15s;}
+.input:focus{border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.1);}
+.label{display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px;}
+textarea.input{resize:vertical;}
+/* Table */
+table{width:100%;border-collapse:collapse;}
+th{background:#f8fafc;padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e2e8f0;}
+td{padding:11px 14px;font-size:13px;border-bottom:1px solid #f1f5f9;}
+tr:hover td{background:#f8fafc;}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal-box{background:#fff;border-radius:16px;width:480px;max-width:100%;max-height:90vh;overflow-y:auto;}
+/* Calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day{position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:transform .1s;user-select:none;}
+.cal-day:not(.cal-future):not(.cal-sun):hover{transform:scale(1.1);}
+.cal-today{outline:2px solid #0f766e;outline-offset:1px;}
+.cal-present{background:#dcfce7;color:#166534;border-color:#86efac;}
+.cal-half{background:#fef9c3;color:#854d0e;border-color:#fde68a;}
+.cal-absent{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
+.cal-swork{background:#ccfbf1;color:#0f766e;border-color:#5eead4;}
+.cal-hwork{background:#f3e8ff;color:#7e22ce;border-color:#d8b4fe;}
+.cal-leave{background:#dbeafe;color:#1e40af;border-color:#93c5fd;}
+.cal-holiday{background:#f3e8ff;color:#7e22ce;border-color:#c4b5fd;}
+.cal-sun{background:#f1f5f9;color:#94a3b8;cursor:default;}
+.cal-pending{background:#ffedd5;color:#c2410c;border-color:#fdba74;}
+.cal-miss{background:#fff1f2;color:#be123c;border-color:#fda4af;}
+.cal-today-log{background:#fefce8;color:#854d0e;border-color:#fde047;}
+.cal-future{background:#f8fafc;color:#cbd5e1;cursor:default;border-color:#f1f5f9;}
+/* Alerts */
+.alert-amber{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;margin-bottom:20px;}
+.alert-blue{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;margin-bottom:16px;overflow:hidden;}
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:500;pointer-events:none;animation:su .3s ease;}
+@keyframes su{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast-ok{background:#1e293b;color:#fff;}
+.toast-err{background:#ef4444;color:#fff;}
+/* Notif dot */
+.ndot{position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:#ef4444;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+/* Mobile */
+.mob-header{display:none;position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 16px;align-items:center;justify-content:space-between;}
+.bot-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:40;background:#fff;border-top:1px solid #e2e8f0;height:60px;}
+.bot-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:600;color:#94a3b8;cursor:pointer;border:none;background:none;}
+.bot-item.active,.bot-item:hover{color:#0f766e;}
+.bot-fab{width:40px;height:40px;border-radius:50%;background:#0f766e;display:flex;align-items:center;justify-content:center;margin-top:-18px;box-shadow:0 4px 12px rgba(15,118,110,.4);}
+/* Grid helpers */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+/* Switch menu */
+.switch-menu{background:#0f1729;border-radius:8px;margin:2px 8px;overflow:hidden;display:none;}
+/* Notif panel */
+.npanel{display:none;position:absolute;top:calc(100% + 4px);right:0;width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:99;overflow:hidden;}
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .main{margin-left:0;}
+  .mob-header{display:flex;}
+  .bot-nav{display:flex;}
+  .main-pad{padding:16px 16px 76px;}
+  .g4{grid-template-columns:1fr 1fr;}
+  .g2{grid-template-columns:1fr;}
+}
+@media print{
+  .sidebar,.mob-header,.bot-nav,.no-print{display:none!important;}
+  .main{margin-left:0;}
+}
 </style>
 </head>
 <body>
 
-<!-- LOGIN PAGE -->
-<div id="loginPage" class="min-h-screen flex items-center justify-center" style="display:none!important">
-  <div class="card w-full max-w-sm shadow-xl">
-    <div class="text-center mb-6">
-      <div class="inline-flex items-center gap-2 mb-2">
-        <div style="width:36px;height:36px;background:#0f766e;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:18px;">A</div>
-        <span style="font-size:20px;font-weight:700;color:#1e293b;">Airdoor</span>
-      </div>
-      <p class="text-gray-500 text-sm">HR Portal — Sign in to continue</p>
-    </div>
-    <div class="space-y-4">
-      <div>
-        <label class="label">Username</label>
-        <input id="loginUser" class="input" placeholder="Enter username" />
-      </div>
-      <div>
-        <label class="label">Password</label>
-        <input id="loginPass" class="input" type="password" placeholder="Enter password" />
-      </div>
-      <p id="loginErr" class="text-red-500 text-sm hidden"></p>
-      <button class="btn btn-primary w-full justify-center" onclick="doLogin()">Sign In</button>
-    </div>
-    <p class="text-xs text-gray-400 text-center mt-4">admin / admin123 &nbsp;·&nbsp; john / emp123</p>
-  </div>
-</div>
-
-<!-- APP SHELL -->
-<div id="appShell" style="display:none">
+<div id="app" style="display:none">
   <!-- Sidebar -->
-  <div class="sidebar no-print" id="sidebar">
-    <div style="padding:20px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155">
-      <div style="width:32px;height:32px;background:#0f766e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;">A</div>
-      <span style="font-weight:700;font-size:15px;">Airdoor HR</span>
+  <div class="sidebar" id="sidebar">
+    <div style="padding:16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155">
+      <div style="width:30px;height:30px;background:#0f766e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:15px">A</div>
+      <span style="font-weight:700;font-size:14px">Airdoor HR Portal</span>
     </div>
-    <nav id="sideNav" style="flex:1;padding:12px 0;overflow-y:auto"></nav>
-    <div style="padding:12px 8px;border-top:1px solid #334155">
-      <div id="sideUser" style="padding:8px 12px;font-size:13px;color:#94a3b8;"></div>
-      <div class="nav-item" onclick="doLogout()">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Logout
+    <nav id="sideNav" style="flex:1;padding:10px 0;overflow-y:auto"></nav>
+    <div style="padding:10px 8px;border-top:1px solid #334155">
+      <div id="sideUser" style="padding:8px 12px;font-size:12px;color:#94a3b8;margin-bottom:4px"></div>
+      <!-- Switch -->
+      <div style="position:relative" id="switchWrap">
+        <div class="nav-item" style="justify-content:space-between" onclick="toggleSwitch()">
+          <span>⇄ Switch Account</span>
+          <span id="swChev" style="transition:transform .2s">▾</span>
+        </div>
+        <div class="switch-menu" id="switchMenu"></div>
       </div>
+      <div class="nav-item" onclick="doLogout()">⎋ Logout</div>
     </div>
   </div>
-  <!-- Main content -->
-  <div class="main" id="mainContent" style="padding:28px"></div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Mobile header -->
+    <div class="mob-header no-print">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:26px;height:26px;background:#0f766e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:13px">A</div>
+        <span style="font-weight:700;font-size:13px">Airdoor HR</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="position:relative">
+          <button onclick="toggleMobSwitch()" style="padding:5px 10px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;font-size:11px;font-weight:600;color:#64748b;cursor:pointer">⇄ Switch</button>
+          <div id="mobSwitchMenu" style="display:none;position:absolute;top:calc(100%+4px);right:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:160px;z-index:99;overflow:hidden"></div>
+        </div>
+        <div style="position:relative">
+          <button onclick="toggleNotif()" style="padding:6px;border:none;background:none;cursor:pointer;position:relative;display:flex">
+            <svg width="20" height="20" fill="none" stroke="#64748b" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span id="nbadge" class="ndot" style="display:none">0</span>
+          </button>
+          <div class="npanel" id="notifPanel">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #f1f5f9">
+              <span style="font-weight:600;font-size:13px">Notifications</span>
+              <button onclick="markAllRead()" style="font-size:11px;color:#0f766e;background:none;border:none;cursor:pointer">Mark all read</button>
+            </div>
+            <div id="notifList" style="max-height:320px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-pad" id="page"></div>
+  </div>
+
+  <!-- Bottom nav (employee) -->
+  <div class="bot-nav no-print" id="botNav" style="display:none">
+    <div style="display:flex;height:100%">
+      <button class="bot-item" id="bn0" onclick="go('/dashboard')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Home
+      </button>
+      <button class="bot-item" id="bn1" onclick="go('/att/history')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        History
+      </button>
+      <button class="bot-item" id="bn2" onclick="go('/att/submit')">
+        <div class="bot-fab"><svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span style="margin-top:2px">Mark</span>
+      </button>
+      <button class="bot-item" id="bn3" onclick="go('/leave/apply')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Leave
+      </button>
+      <button class="bot-item" id="bn4" onclick="go('/profile')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Profile
+      </button>
+    </div>
+  </div>
 </div>
 
-<!-- MODAL -->
-<div id="modal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeModal()">
-  <div class="modal" id="modalInner"></div>
+<!-- Modal -->
+<div id="modal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" id="modalBox"></div>
 </div>
-
-<div id="toastEl" class="toast" style="display:none"></div>
+<div id="toast" class="toast toast-ok" style="display:none"></div>
 
 <script>
-// ===================== DATA LAYER =====================
-const USERS_KEY='hr_users',ATT_KEY='hr_att',LEAVE_KEY='hr_leaves',HOL_KEY='hr_holidays',SAL_KEY='hr_salary';
-
-const SEED_USERS=[
-  {id:1,username:'admin',password:'admin123',name:'Admin User',role:'admin',email:'admin@airdoor.com',phone:'',designation:'HR Manager',department:'HR',monthlySalary:0,isActive:true,createdAt:'2024-01-01'},
-  {id:2,username:'john',password:'emp123',name:'John Mathew',role:'employee',email:'john@airdoor.com',phone:'+91 9876543210',designation:'Software Engineer',department:'Engineering',monthlySalary:50000,isActive:true,createdAt:'2024-01-15'},
-  {id:3,username:'priya',password:'emp123',name:'Priya Nair',role:'employee',email:'priya@airdoor.com',phone:'+91 9876543211',designation:'Designer',department:'Design',monthlySalary:45000,isActive:true,createdAt:'2024-01-20'},
-  {id:4,username:'ravi',password:'emp123',name:'Ravi Kumar',role:'employee',email:'ravi@airdoor.com',phone:'+91 9876543212',designation:'QA Engineer',department:'Engineering',monthlySalary:42000,isActive:true,createdAt:'2024-02-01'},
+// ============ DATA ============
+var DB={
+  USERS:'hr_u', ATT:'hr_a', LEAVE:'hr_l', HOL:'hr_h', SAL:'hr_s', NOTIF:'hr_n'
+};
+var SEED_USERS=[
+  {id:1,username:'admin',password:'admin123',name:'Admin User',role:'admin',email:'admin@airdoor.com',phone:'',designation:'HR Manager',department:'HR',monthlySalary:0,isActive:true},
+  {id:2,username:'john',password:'emp123',name:'John Mathew',role:'employee',email:'john@airdoor.com',phone:'+91 9876543210',designation:'Software Engineer',department:'Engineering',monthlySalary:50000,isActive:true},
+  {id:3,username:'priya',password:'emp123',name:'Priya Nair',role:'employee',email:'priya@airdoor.com',phone:'+91 9876543211',designation:'Designer',department:'Design',monthlySalary:45000,isActive:true},
+  {id:4,username:'ravi',password:'emp123',name:'Ravi Kumar',role:'employee',email:'ravi@airdoor.com',phone:'+91 9876543212',designation:'QA Engineer',department:'Engineering',monthlySalary:42000,isActive:true}
 ];
-const SEED_HOL=[
+var SEED_HOL=[
   {id:1,name:'Republic Day',date:'2025-01-26'},
   {id:2,name:'Holi',date:'2025-03-17'},
   {id:3,name:'Independence Day',date:'2025-08-15'},
   {id:4,name:'Gandhi Jayanti',date:'2025-10-02'},
   {id:5,name:'Diwali',date:'2025-10-20'},
-  {id:6,name:'Christmas',date:'2025-12-25'},
+  {id:6,name:'Christmas',date:'2025-12-25'}
 ];
 
-function load(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback;}catch{return fallback;}}
-function save(key,val){localStorage.setItem(key,JSON.stringify(val));}
-function getUsers(){return load(USERS_KEY,SEED_USERS);}
-function saveUsers(u){save(USERS_KEY,u);}
-function getAtt(){return load(ATT_KEY,[]);}
-function saveAtt(a){save(ATT_KEY,a);}
-function getLeaves(){return load(LEAVE_KEY,[]);}
-function saveLeaves(l){save(LEAVE_KEY,l);}
-function getHols(){return load(HOL_KEY,SEED_HOL);}
-function saveHols(h){save(HOL_KEY,h);}
-function getSal(){return load(SAL_KEY,[]);}
-function saveSal(s){save(SAL_KEY,s);}
-function nextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
-function today(){return new Date().toISOString().slice(0,10);}
-function fmtDate(d){if(!d)return'';const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
-function monthName(m){return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1];}
-function rupee(n){return'₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function ls(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function lss(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function getU(){return ls(DB.USERS,SEED_USERS);}
+function setU(v){lss(DB.USERS,v);}
+function getA(){return ls(DB.ATT,[]);}
+function setA(v){lss(DB.ATT,v);}
+function getL(){return ls(DB.LEAVE,[]);}
+function setL(v){lss(DB.LEAVE,v);}
+function getH(){return ls(DB.HOL,SEED_HOL);}
+function setH(v){lss(DB.HOL,v);}
+function getS(){return ls(DB.SAL,[]);}
+function setS(v){lss(DB.SAL,v);}
+function getN(){return ls(DB.NOTIF,[]);}
+function setN(v){lss(DB.NOTIF,v);}
+function nid(arr){return arr.length?Math.max.apply(null,arr.map(function(x){return x.id;}))+1:1;}
+function td(){return new Date().toISOString().slice(0,10);}
+function fd(d){if(!d)return'';var dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function mn(m){return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1];}
+function ru(n){return String.fromCharCode(8377)+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function ago(iso){var d=Date.now()-new Date(iso).getTime(),m=Math.floor(d/60000);if(m<1)return'just now';if(m<60)return m+'m ago';var h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago';}
 
-// ===================== STATE =====================
-let currentUser=null;
+// ============ STATE ============
+var CU=null; // current user
+var CP='';   // current path
+var calM={y:new Date().getFullYear(),m:new Date().getMonth()+1};
 
+// ============ INIT ============
 function init(){
-  // seed if first run
-  if(!localStorage.getItem(USERS_KEY)) save(USERS_KEY,SEED_USERS);
-  if(!localStorage.getItem(HOL_KEY)) save(HOL_KEY,SEED_HOL);
-  const saved=sessionStorage.getItem('hr_session');
-  if(saved){
-    currentUser=JSON.parse(saved);
-    showApp();
-  } else {
-    showLogin();
+  if(!localStorage.getItem(DB.USERS)) lss(DB.USERS,SEED_USERS);
+  if(!localStorage.getItem(DB.HOL)) lss(DB.HOL,SEED_HOL);
+  var saved=sessionStorage.getItem('hr_sess');
+  if(saved){try{CU=JSON.parse(saved);}catch(e){CU=null;}}
+  if(!CU){
+    var users=getU();
+    CU=users.filter(function(u){return u.username==='admin';})[0]||users[0];
+    sessionStorage.setItem('hr_sess',JSON.stringify(CU));
   }
+  document.getElementById('app').style.display='';
+  renderSidebar();
+  renderSwitchMenus();
+  updateNBadge();
+  var isEmp=CU.role==='employee';
+  document.getElementById('botNav').style.display=isEmp?'flex':'none';
+  go(CU.role==='admin'?'/admin/dash':'/dashboard');
 }
-
-function doLogin(){
-  const u=document.getElementById('loginUser').value.trim();
-  const p=document.getElementById('loginPass').value;
-  const users=getUsers();
-  const found=users.find(x=>x.username===u&&x.password===p&&x.isActive);
-  if(!found){
-    const el=document.getElementById('loginErr');
-    el.textContent='Invalid username or password';
-    el.classList.remove('hidden');
-    return;
-  }
-  currentUser=found;
-  sessionStorage.setItem('hr_session',JSON.stringify(found));
-  showApp();
-}
-
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('loginPage').style.display!=='none')doLogin();});
 
 function doLogout(){
-  currentUser=null;
-  sessionStorage.removeItem('hr_session');
-  showLogin();
-}
-
-function showLogin(){
-  document.getElementById('loginPage').style.cssText='';
-  document.getElementById('appShell').style.display='none';
-}
-
-function showApp(){
-  document.getElementById('loginPage').style.cssText='display:none!important';
-  document.getElementById('appShell').style.display='';
+  var users=getU();
+  CU=users.filter(function(u){return u.username==='admin';})[0]||users[0];
+  sessionStorage.setItem('hr_sess',JSON.stringify(CU));
   renderSidebar();
-  const hash=location.hash.slice(1)||'/';
-  navigate(currentUser.role==='admin'?'/admin/dashboard':'/dashboard');
+  renderSwitchMenus();
+  updateNBadge();
+  document.getElementById('botNav').style.display='none';
+  go('/admin/dash');
+  toast('Switched to Admin');
 }
 
-// ===================== SIDEBAR =====================
-const ADMIN_NAV=[
-  {label:'Dashboard',icon:'grid',path:'/admin/dashboard'},
-  {label:'Manage Attendance',icon:'calendar',path:'/admin/attendance'},
-  {label:'Manage Leaves',icon:'file',path:'/admin/leaves'},
-  {label:'Staff Directory',icon:'users',path:'/admin/staff'},
-  {label:'Payroll',icon:'dollar',path:'/admin/salary'},
-  {label:'Holidays',icon:'sun',path:'/admin/holidays'},
-  {label:'Reports',icon:'bar',path:'/admin/reports'},
-];
-const EMP_NAV=[
-  {label:'Dashboard',icon:'grid',path:'/dashboard'},
-  {label:'Submit Attendance',icon:'check',path:'/attendance/submit'},
-  {label:'Attendance History',icon:'calendar',path:'/attendance/history'},
-  {label:'Apply Leave',icon:'file',path:'/leaves/apply'},
-  {label:'Leave History',icon:'list',path:'/leaves/history'},
-  {label:'My Profile',icon:'user',path:'/profile'},
-];
+function switchTo(uid){
+  var u=getU().filter(function(x){return x.id===uid&&x.isActive;})[0];
+  if(!u)return;
+  CU=u;
+  sessionStorage.setItem('hr_sess',JSON.stringify(u));
+  closeAll();
+  renderSidebar();
+  renderSwitchMenus();
+  updateNBadge();
+  document.getElementById('botNav').style.display=u.role==='employee'?'flex':'none';
+  go(u.role==='admin'?'/admin/dash':'/dashboard');
+  toast('Switched to '+u.name);
+}
 
-const ICONS={
-  grid:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
-  calendar:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
-  file:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
-  users:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-  dollar:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
-  sun:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
-  bar:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
-  check:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
-  list:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
-  user:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+// ============ SIDEBAR ============
+var ANAV=[
+  {l:'Dashboard',i:'grid',p:'/admin/dash'},
+  {l:'Manage Attendance',i:'cal',p:'/admin/att'},
+  {l:'Manage Leaves',i:'file',p:'/admin/leave'},
+  {l:'Staff Directory',i:'users',p:'/admin/staff'},
+  {l:'Payroll',i:'dollar',p:'/admin/salary'},
+  {l:'Holidays',i:'sun',p:'/admin/hol'},
+  {l:'Reports',i:'bar',p:'/admin/reports'}
+];
+var ENAV=[
+  {l:'Dashboard',i:'grid',p:'/dashboard'},
+  {l:'Log Attendance',i:'check',p:'/att/submit'},
+  {l:'Att. History',i:'cal',p:'/att/history'},
+  {l:'Apply Leave',i:'file',p:'/leave/apply'},
+  {l:'Leave History',i:'list',p:'/leave/history'},
+  {l:'My Profile',i:'user',p:'/profile'}
+];
+var ICO={
+  grid:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
+  cal:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  file:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  users:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  dollar:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  sun:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+  bar:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  check:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+  list:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+  user:'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
 };
 
-let currentPath='';
 function renderSidebar(){
-  const nav=currentUser.role==='admin'?ADMIN_NAV:EMP_NAV;
-  document.getElementById('sideNav').innerHTML=nav.map(n=>`
-    <div class="nav-item ${currentPath===n.path?'active':''}" onclick="navigate('${n.path}')">
-      ${ICONS[n.icon]||''} ${n.label}
-    </div>`).join('');
-  document.getElementById('sideUser').innerHTML=`
-    <div style="font-weight:600;color:#e2e8f0;font-size:13px">${currentUser.name}</div>
-    <div style="font-size:11px;text-transform:capitalize">${currentUser.role}</div>`;
+  var nav=CU.role==='admin'?ANAV:ENAV;
+  document.getElementById('sideNav').innerHTML=nav.map(function(n){
+    return '<div class="nav-item'+(CP===n.p?' active':'')+'" onclick="go(\''+n.p+'\')">'+(ICO[n.i]||'')+' '+n.l+'</div>';
+  }).join('');
+  document.getElementById('sideUser').innerHTML='<div style="font-weight:600;color:#e2e8f0;font-size:12px">'+CU.name+'</div><div style="font-size:11px;text-transform:capitalize">'+CU.role+'</div>';
 }
 
-// ===================== ROUTER =====================
-function navigate(path){
-  currentPath=path;
+function renderSwitchMenus(){
+  var others=getU().filter(function(u){return u.isActive&&u.id!==CU.id;});
+  var sideHtml=others.map(function(u){
+    return '<div onclick="switchTo('+u.id+')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;color:#94a3b8;font-size:12px" onmouseover="this.style.background=\'#1e293b\'" onmouseout="this.style.background=\'\'">'
+      +'<div style="width:22px;height:22px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;flex-shrink:0">'+u.name.charAt(0)+'</div>'
+      +'<div><div style="font-weight:500;color:#e2e8f0">'+u.name+'</div><div style="font-size:10px;text-transform:capitalize">'+u.role+'</div></div></div>';
+  }).join('');
+  var mobHtml=others.map(function(u){
+    return '<div onclick="switchTo('+u.id+')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:12px" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
+      +'<div style="width:26px;height:26px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;flex-shrink:0">'+u.name.charAt(0)+'</div>'
+      +'<div><div style="font-weight:600">'+u.name+'</div><div style="font-size:10px;color:#64748b;text-transform:capitalize">'+u.role+'</div></div></div>';
+  }).join('');
+  document.getElementById('switchMenu').innerHTML=sideHtml;
+  document.getElementById('mobSwitchMenu').innerHTML=mobHtml;
+}
+
+var swOpen=false;
+function toggleSwitch(){
+  swOpen=!swOpen;
+  document.getElementById('switchMenu').style.display=swOpen?'block':'none';
+  document.getElementById('swChev').style.transform=swOpen?'rotate(180deg)':'';
+}
+function toggleMobSwitch(){
+  var m=document.getElementById('mobSwitchMenu');
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+function closeAll(){
+  swOpen=false;
+  document.getElementById('switchMenu').style.display='none';
+  document.getElementById('swChev').style.transform='';
+  document.getElementById('notifPanel').style.display='none';
+  document.getElementById('mobSwitchMenu').style.display='none';
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#switchWrap'))closeAll();
+  if(!e.target.closest('#notifPanel')&&!e.target.closest('[onclick*="toggleNotif"]'))document.getElementById('notifPanel').style.display='none';
+  if(!e.target.closest('#mobSwitchMenu')&&!e.target.closest('[onclick*="toggleMobSwitch"]'))document.getElementById('mobSwitchMenu').style.display='none';
+});
+
+// ============ NOTIFICATIONS ============
+function pushNotif(uid,title,msg,type){
+  var n=getN();
+  n.push({id:nid(n),userId:uid,title:title,message:msg,type:type,read:false,createdAt:new Date().toISOString()});
+  setN(n);
+  updateNBadge();
+}
+function updateNBadge(){
+  if(!CU)return;
+  var count=getN().filter(function(n){return n.userId===CU.id&&!n.read;}).length;
+  var el=document.getElementById('nbadge');
+  if(!el)return;
+  if(count>0){el.style.display='flex';el.textContent=count>9?'9+':String(count);}
+  else el.style.display='none';
+}
+function renderNotifList(){
+  var items=getN().filter(function(n){return n.userId===CU.id;}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);}).slice(0,20);
+  var ico={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+  var html=items.length===0?'<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">No notifications yet</div>':
+    items.map(function(n){
+      return '<div onclick="readN('+n.id+')" style="padding:11px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer;background:'+(n.read?'#fff':'#eff6ff')+'">'
+        +'<div style="display:flex;align-items:flex-start;gap:8px">'
+        +'<span style="font-size:14px;flex-shrink:0">'+(ico[n.type]||'ℹ️')+'</span>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:12px;font-weight:'+(n.read?'500':'700')+';color:#1e293b">'+n.title+'</div>'
+        +'<div style="font-size:11px;color:#64748b;margin-top:2px">'+n.message+'</div>'
+        +'<div style="font-size:10px;color:#94a3b8;margin-top:3px">'+ago(n.createdAt)+'</div>'
+        +'</div>'+(n.read?'':'<div style="width:7px;height:7px;border-radius:50%;background:#3b82f6;flex-shrink:0;margin-top:3px"></div>')
+        +'</div></div>';
+    }).join('');
+  document.getElementById('notifList').innerHTML=html;
+}
+function readN(id){
+  var n=getN();var i=n.findIndex(function(x){return x.id===id;});
+  if(i>=0)n[i].read=true;setN(n);renderNotifList();updateNBadge();
+}
+function markAllRead(){
+  var n=getN().map(function(x){return x.userId===CU.id?Object.assign({},x,{read:true}):x;});
+  setN(n);renderNotifList();updateNBadge();
+  if(CP==='/dashboard')go('/dashboard');
+}
+function toggleNotif(){
+  renderNotifList();
+  var p=document.getElementById('notifPanel');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+// ============ ROUTER ============
+var ROUTES={
+  '/admin/dash':pgAdminDash,
+  '/admin/att':pgAdminAtt,
+  '/admin/leave':pgAdminLeave,
+  '/admin/staff':pgAdminStaff,
+  '/admin/salary':pgAdminSalary,
+  '/admin/hol':pgAdminHol,
+  '/admin/reports':pgAdminReports,
+  '/dashboard':pgEmpDash,
+  '/att/submit':pgAttSubmit,
+  '/att/history':pgAttHistory,
+  '/leave/apply':pgLeaveApply,
+  '/leave/history':pgLeaveHistory,
+  '/profile':pgProfile
+};
+function go(path){
+  CP=path;
   renderSidebar();
-  const el=document.getElementById('mainContent');
-  const pages={
-    '/admin/dashboard':pageAdminDashboard,
-    '/admin/attendance':pageAdminAttendance,
-    '/admin/leaves':pageAdminLeaves,
-    '/admin/staff':pageAdminStaff,
-    '/admin/salary':pageAdminSalary,
-    '/admin/holidays':pageAdminHolidays,
-    '/admin/reports':pageAdminReports,
-    '/dashboard':pageEmpDashboard,
-    '/attendance/submit':pageSubmitAtt,
-    '/attendance/history':pageAttHistory,
-    '/leaves/apply':pageApplyLeave,
-    '/leaves/history':pageLeaveHistory,
-    '/profile':pageProfile,
-  };
-  if(pages[path]) el.innerHTML=pages[path]();
-  else el.innerHTML='<div class="card"><p class="text-gray-500">Page not found.</p></div>';
+  updateBotNav();
+  var fn=ROUTES[path];
+  var el=document.getElementById('page');
+  el.innerHTML=fn?fn():'<div class="card"><p style="color:#94a3b8">Page not found.</p></div>';
+  if(path==='/dashboard'&&CU.role==='employee'){
+    calM={y:new Date().getFullYear(),m:new Date().getMonth()+1};
+    renderCal();
+  }
+  window.scrollTo(0,0);
 }
-
-// ===================== HELPERS =====================
-function attBadge(s){
-  const map={present:'badge-green',absent:'badge-red',half_day:'badge-yellow',sunday_work:'badge-purple',holiday_work:'badge-purple',leave:'badge-blue',pending:'badge-yellow',approved:'badge-green',rejected:'badge-red'};
-  const label={present:'Present',absent:'Absent',half_day:'Half Day',sunday_work:'Sunday Work',holiday_work:'Holiday Work',leave:'Leave',pending:'Pending',approved:'Approved',rejected:'Rejected'};
-  return`<span class="badge ${map[s]||'badge-gray'}">${label[s]||s}</span>`;
-}
-
-function calcSalary(userId, month, year){
-  const att=getAtt().filter(a=>a.userId===userId&&a.status==='approved');
-  const hols=getHols();
-  let paid=0;
-  att.forEach(a=>{
-    const d=new Date(a.date+'T00:00:00');
-    if(d.getFullYear()!==year||d.getMonth()+1!==month) return;
-    if(a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work') paid+=1;
-    if(a.type==='half_day') paid+=0.5;
-    if(a.type==='leave') paid+=1;
+function updateBotNav(){
+  var mp={'/dashboard':'bn0','/att/history':'bn1','/att/submit':'bn2','/leave/apply':'bn3','/profile':'bn4'};
+  ['bn0','bn1','bn2','bn3','bn4'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.classList.toggle('active',mp[CP]===id);
   });
-  // count holidays in month
-  hols.forEach(h=>{
-    const d=new Date(h.date+'T00:00:00');
-    if(d.getFullYear()===year&&d.getMonth()+1===month) paid+=1;
+}
+
+// ============ HELPERS ============
+function badge(s,t){
+  var cls={present:'bg-green',absent:'bg-red',half_day:'bg-yellow',sunday_work:'bg-teal',holiday_work:'bg-purple',leave:'bg-blue',pending:'bg-orange',approved:'bg-green',rejected:'bg-red',casual:'bg-blue',sick:'bg-red',comp_off:'bg-teal',not_submitted:'bg-red',active:'bg-green',inactive:'bg-red'};
+  var lbl={present:'Present',absent:'Absent',half_day:'Half Day',sunday_work:'Sunday Work',holiday_work:'Holiday Work',leave:'On Leave',pending:'Pending',approved:'Approved',rejected:'Rejected',casual:'Casual Leave',sick:'Sick Leave',comp_off:'Comp Off',not_submitted:'No Record',active:'Active',inactive:'Inactive'};
+  var k=s||'';
+  return '<span class="badge '+(cls[k]||'bg-gray')+'">'+(t||lbl[k]||k)+'</span>';
+}
+function calcSal(uid,month,year){
+  var att=getA().filter(function(a){return a.userId===uid&&a.status==='approved';});
+  var hols=getH();
+  var paid=0;
+  att.forEach(function(a){
+    var d=new Date(a.date+'T00:00:00');
+    if(d.getFullYear()!==year||d.getMonth()+1!==month)return;
+    if(a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work')paid+=1;
+    else if(a.type==='half_day')paid+=0.5;
+    else if(a.type==='leave')paid+=1;
   });
-  const user=getUsers().find(u=>u.id===userId);
-  const monthly=user?Number(user.monthlySalary):0;
-  const workDays=26;
-  const gross=monthly/workDays*paid;
-  const deductions=Math.max(0,monthly-gross);
-  return{paid:Math.min(paid,workDays),workDays,gross:Math.min(gross,monthly),deductions:Math.min(deductions,monthly),net:Math.min(gross,monthly),monthly};
-}
-
-function leaveBalance(userId){
-  const leaves=getLeaves().filter(l=>l.userId===userId&&l.status==='approved');
-  const used={casual:0,sick:0,comp_off:0};
-  leaves.forEach(l=>{
-    const days=(new Date(l.endDate)-new Date(l.startDate))/(86400000)+1;
-    if(used[l.type]!==undefined) used[l.type]+=days;
+  hols.forEach(function(h){
+    var d=new Date(h.date+'T00:00:00');
+    if(d.getFullYear()===year&&d.getMonth()+1===month)paid+=1;
   });
-  return{casual:Math.max(0,12-used.casual),sick:Math.max(0,12-used.sick),comp_off:Math.max(0,10-used.comp_off)};
+  var user=getU().filter(function(u){return u.id===uid;})[0];
+  var mo=user?Number(user.monthlySalary):0;
+  var wd=26;
+  var gross=Math.min(mo,mo/wd*paid);
+  return{paid:Math.min(paid,wd),wd:wd,gross:gross,ded:Math.max(0,mo-gross),net:gross,mo:mo};
+}
+function leaveBal(uid){
+  var leaves=getL().filter(function(l){return l.userId===uid&&l.status==='approved';});
+  var cu=0,su=0,co=0;
+  leaves.forEach(function(l){
+    var d=Math.round((new Date(l.endDate)-new Date(l.startDate))/86400000)+1;
+    if(l.type==='casual')cu+=d;
+    else if(l.type==='sick')su+=d;
+    else if(l.type==='comp_off')co+=d;
+  });
+  var earned=getA().filter(function(a){return a.userId===uid&&a.status==='approved'&&(a.type==='sunday_work'||a.type==='holiday_work');}).length;
+  return{casUsed:cu,casLeft:Math.max(0,12-cu),sikUsed:su,compEarned:earned,compLeft:Math.max(0,earned-co)};
 }
 
-// ===================== ADMIN DASHBOARD =====================
-function pageAdminDashboard(){
-  const users=getUsers().filter(u=>u.role==='employee');
-  const att=getAtt();
-  const leaves=getLeaves();
-  const sal=getSal();
-  const pending=att.filter(a=>a.status==='pending').length;
-  const pendingL=leaves.filter(l=>l.status==='pending').length;
-  const absentToday=att.filter(a=>a.date===today()&&a.type==='absent'&&a.status==='approved').length;
-  return`
-  <div>
-    <h1 style="font-size:26px;font-weight:700;color:#1e293b;margin-bottom:4px">Admin Dashboard</h1>
-    <p style="color:#64748b;margin-bottom:24px">Overview of workforce attendance, leaves, and payroll.</p>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
-      ${statCard('Pending Attendance',pending,'Requires approval','#0f766e','click navigate("/admin/attendance")')}
-      ${statCard('Pending Leaves',pendingL,'Leave requests','#f59e0b')}
-      ${statCard('Absent Today',absentToday,'Staff absent','#ef4444')}
-      ${statCard('Total Staff',users.length,'Active employees','#3b82f6')}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="card">
-        <h3 style="font-weight:600;margin-bottom:16px">Recent Attendance Requests</h3>
-        ${att.filter(a=>a.status==='pending').slice(0,5).map(a=>{
-          const u=getUsers().find(x=>x.id===a.userId);
-          return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9">
-            <div><div style="font-weight:500;font-size:14px">${u?u.name:'Unknown'}</div><div style="font-size:12px;color:#64748b">${fmtDate(a.date)} · ${a.type.replace('_',' ')}</div></div>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-success" style="padding:4px 10px;font-size:12px" onclick="approveAtt(${a.id})">✓</button>
-              <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="rejectAtt(${a.id})">✗</button>
-            </div>
-          </div>`;
-        }).join('')||'<p style="color:#94a3b8;font-size:14px">No pending requests</p>'}
-      </div>
-      <div class="card">
-        <h3 style="font-weight:600;margin-bottom:16px">Staff Overview</h3>
-        ${users.map(u=>{
-          const todayAtt=att.find(a=>a.userId===u.id&&a.date===today());
-          const status=todayAtt?todayAtt.type:'Not Submitted';
-          return`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9">
-            <div style="width:36px;height:36px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex-shrink:0">${u.name.charAt(0)}</div>
-            <div style="flex:1"><div style="font-weight:500;font-size:14px">${u.name}</div><div style="font-size:12px;color:#64748b">${u.designation||u.department||''}</div></div>
-            ${attBadge(status)}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-  </div>`;
+// ============ CALENDAR ============
+function renderCal(){
+  var el=document.getElementById('calGrid');
+  if(!el)return;
+  var y=calM.y,m=calM.m;
+  var titleEl=document.getElementById('calTitle');
+  if(titleEl)titleEl.textContent=mn(m)+' '+y;
+  var hols=getH();var att=getA().filter(function(a){return a.userId===CU.id;});
+  var aMap={};att.forEach(function(a){aMap[a.date]=a;});
+  var hMap={};hols.forEach(function(h){hMap[h.date]=h.name;});
+  var todayStr=td();
+  var first=new Date(y,m-1,1);
+  var lastD=new Date(y,m,0).getDate();
+  var startDow=first.getDay();
+  var html='';
+  for(var i=0;i<startDow;i++)html+='<div></div>';
+  for(var d=1;d<=lastD;d++){
+    var ds=y+'-'+pad(m)+'-'+pad(d);
+    var isSun=new Date(ds+'T00:00:00').getDay()===0;
+    var isHol=!!hMap[ds];
+    var rec=aMap[ds];
+    var isPast=ds<todayStr;
+    var isToday=ds===todayStr;
+    var isFuture=ds>todayStr;
+    var cls='cal-day';
+    var extra='';
+    if(isToday)cls+=' cal-today';
+    var canClick=false;
+    var clickable='';
+    if(rec){
+      if(rec.status==='pending')cls+=' cal-pending';
+      else if(rec.status==='rejected')cls+=' cal-miss';
+      else{
+        var tc={present:'cal-present',half_day:'cal-half',absent:'cal-absent',sunday_work:'cal-swork',holiday_work:'cal-hwork',leave:'cal-leave'};
+        cls+=' '+(tc[rec.type]||'cal-present');
+      }
+      canClick=true;
+    } else if(isFuture){
+      if(isSun)cls+=' cal-sun';
+      else if(isHol)cls+=' cal-holiday';
+      else cls+=' cal-future';
+    } else if(isToday){
+      if(isSun)cls+=' cal-sun';
+      else if(isHol)cls+=' cal-holiday';
+      else{cls+=' cal-today-log';canClick=true;}
+    } else {
+      if(isSun)cls+=' cal-sun';
+      else if(isHol)cls+=' cal-holiday';
+      else{cls+=' cal-miss';canClick=true;}
+    }
+    if(canClick)clickable=' onclick="openDay(\''+ds+'\')"';
+    html+='<div class="'+cls+'"'+clickable+' title="'+d+(isHol?' - '+hMap[ds]:'')+'"><span>'+d+'</span>'+(isSun&&!rec?'<span style="font-size:8px;opacity:.6">off</span>':'')+'</div>';
+  }
+  el.innerHTML=html;
+}
+function pad(n){return n<10?'0'+n:String(n);}
+function calPrev(){calM.m--;if(calM.m<1){calM.m=12;calM.y--;}renderCal();}
+function calNext(){calM.m++;if(calM.m>12){calM.m=1;calM.y++;}renderCal();}
+
+function openDay(ds){
+  var rec=getA().filter(function(a){return a.userId===CU.id&&a.date===ds;})[0];
+  var hols=getH();
+  var holName=hols.filter(function(h){return h.date===ds;}).map(function(h){return h.name;})[0]||'';
+  var isSun=new Date(ds+'T00:00:00').getDay()===0;
+  var bal=leaveBal(CU.id);
+  var dLabel=new Date(ds+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var isApproved=rec&&rec.status==='approved';
+  var bg=isApproved?'#f0fdf4':rec?'#ffedd5':'#fefce8';
+  var tc=isApproved?'#166534':rec?'#c2410c':'#854d0e';
+  var stLbl=isApproved?'Approved':rec?rec.status==='rejected'?'Rejected':'Pending':'Not Logged';
+  var body='';
+  if(isApproved){
+    body='<div style="font-size:13px;padding:0 18px 18px">'
+      +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">Type</span><strong>'+rec.type.replace(/_/g,' ')+'</strong></div>'
+      +(rec.notes?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:#64748b">Notes</span><span>'+rec.notes+'</span></div>':'')
+      +'</div>'
+      +'<div style="padding:0 18px 18px"><button class="btn btn-o" onclick="closeModal()" style="width:100%;justify-content:center">Close</button></div>';
+  } else {
+    body='<div style="padding:0 18px 14px">'
+      +(isSun?'<div style="padding:8px 12px;background:#f3e8ff;border-radius:8px;font-size:12px;color:#7e22ce;margin-bottom:12px">Sunday work earns a Comp Off when approved.</div>':'')
+      +'<div style="display:flex;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:14px">'
+      +'<button id="dt_a" onclick="dayTab(\'a\')" style="flex:1;padding:8px;border:none;background:#0f766e;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Mark Attendance</button>'
+      +'<button id="dt_l" onclick="dayTab(\'l\')" style="flex:1;padding:8px;border:none;background:#fff;color:#64748b;font-size:12px;cursor:pointer">Apply Leave</button>'
+      +'</div>'
+      +'<div id="dta">'
+      +'<div style="margin-bottom:10px"><label class="label">Attendance Type</label>'
+      +'<select class="input" id="day_type">'
+      +'<option value="present"'+((!isSun&&!rec)?'':'')+'>Present</option>'
+      +'<option value="absent">Absent</option>'
+      +'<option value="half_day">Half Day</option>'
+      +'<option value="sunday_work"'+(isSun?' selected':'')+'>Sunday Work (Comp Off)</option>'
+      +'<option value="holiday_work">Holiday Work (Comp Off)</option>'
+      +'</select></div>'
+      +'<div style="margin-bottom:14px"><label class="label">Notes (optional)</label><input class="input" id="day_note" placeholder="Any notes..."/></div>'
+      +'<button class="btn btn-p" onclick="submitDayAtt(\''+ds+'\')" style="width:100%;justify-content:center">Submit Attendance</button>'
+      +'</div>'
+      +'<div id="dtl" style="display:none">'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
+      +'<span class="badge bg-blue">Casual: '+bal.casLeft+' left</span>'
+      +'<span class="badge bg-teal">Comp Off: '+bal.compLeft+'</span>'
+      +'</div>'
+      +'<div style="margin-bottom:10px"><label class="label">Leave Type</label>'
+      +'<select class="input" id="day_ltype"><option value="casual">Casual Leave</option><option value="sick">Sick Leave</option><option value="comp_off">Comp Off</option></select></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+      +'<div><label class="label">From</label><input class="input" type="date" id="day_lfrom" value="'+ds+'" readonly style="background:#f8fafc"/></div>'
+      +'<div><label class="label">To</label><input class="input" type="date" id="day_lto" value="'+ds+'" min="'+ds+'"/></div>'
+      +'</div>'
+      +'<div style="margin-bottom:14px"><label class="label">Reason</label><textarea class="input" id="day_lreason" rows="2" placeholder="Brief reason..."></textarea></div>'
+      +'<button class="btn btn-p" onclick="submitDayLeave(\''+ds+'\')" style="width:100%;justify-content:center">Apply Leave</button>'
+      +'</div>'
+      +'</div>';
+  }
+  openModal('<div style="background:'+bg+';padding:16px 18px;border-radius:16px 16px 0 0">'
+    +'<div style="display:flex;align-items:flex-start;justify-content:space-between">'
+    +'<div>'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;opacity:.65;color:'+tc+'">'+new Date(ds+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long'})+'</div>'
+    +'<div style="font-size:17px;font-weight:700;color:'+tc+'">'+new Date(ds+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})+'</div>'
+    +(holName?'<div style="font-size:11px;opacity:.75;color:'+tc+'">'+holName+'</div>':'')
+    +'</div>'
+    +'<span style="padding:3px 8px;border-radius:9999px;font-size:10px;font-weight:700;background:rgba(255,255,255,.5);color:'+tc+'">'+stLbl+'</span>'
+    +'</div></div>'
+    +body);
+}
+function dayTab(t){
+  document.getElementById('dta').style.display=t==='a'?'':'none';
+  document.getElementById('dtl').style.display=t==='l'?'':'none';
+  document.getElementById('dt_a').style.cssText='flex:1;padding:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:'+(t==='a'?'#0f766e':'#fff')+';color:'+(t==='a'?'#fff':'#64748b');
+  document.getElementById('dt_l').style.cssText='flex:1;padding:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:'+(t==='l'?'#0f766e':'#fff')+';color:'+(t==='l'?'#fff':'#64748b');
+}
+function submitDayAtt(ds){
+  var type=document.getElementById('day_type').value;
+  var note=document.getElementById('day_note').value.trim();
+  var att=getA();
+  if(att.filter(function(a){return a.userId===CU.id&&a.date===ds;}).length){toast('Already submitted for this date','err');return;}
+  att.push({id:nid(att),userId:CU.id,date:ds,type:type,notes:note,status:'pending',createdAt:new Date().toISOString()});
+  setA(att);closeModal();renderCal();toast('Attendance submitted!');
+  if(CP==='/dashboard')go('/dashboard');
+}
+function submitDayLeave(ds){
+  var ltype=document.getElementById('day_ltype').value;
+  var lto=document.getElementById('day_lto').value;
+  var reason=document.getElementById('day_lreason').value.trim();
+  if(!reason){toast('Reason required','err');return;}
+  if(lto<ds){toast('End date must be on or after start','err');return;}
+  var leaves=getL();
+  var days=Math.round((new Date(lto)-new Date(ds))/86400000)+1;
+  leaves.push({id:nid(leaves),userId:CU.id,type:ltype,startDate:ds,endDate:lto,days:days,reason:reason,status:'pending',createdAt:new Date().toISOString()});
+  setL(leaves);closeModal();toast('Leave applied!');
+  if(CP==='/dashboard')go('/dashboard');
 }
 
-function statCard(title,val,sub,color,clickHandler=''){
-  return`<div class="stat-card" style="cursor:${clickHandler?'pointer':'default'}" ${clickHandler?`onclick="${clickHandler}"`:''}>
-    <div style="font-size:13px;color:#64748b;margin-bottom:8px">${title}</div>
-    <div style="font-size:32px;font-weight:700;color:${color}">${val}</div>
-    <div style="font-size:12px;color:#94a3b8;margin-top:4px">${sub}</div>
-  </div>`;
+// ============ ADMIN DASHBOARD ============
+function pgAdminDash(){
+  var att=getA(),leaves=getL();
+  var pA=att.filter(function(a){return a.status==='pending';}).length;
+  var pL=leaves.filter(function(l){return l.status==='pending';}).length;
+  var total=pA+pL;
+  var absent=att.filter(function(a){return a.date===td()&&a.type==='absent'&&a.status==='approved';}).length;
+  var staff=getU().filter(function(u){return u.role==='employee';});
+  return '<div>'
+    +'<h1 style="font-size:24px;font-weight:700;margin-bottom:4px">Admin Dashboard</h1>'
+    +'<p style="color:#64748b;margin-bottom:20px;font-size:13px">Overview of workforce attendance, leaves, and payroll.</p>'
+    +(total>0?'<div class="alert-amber">'
+      +'<div style="width:36px;height:36px;border-radius:50%;background:#fde68a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">🔔</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-weight:600;font-size:13px;color:#92400e">'+total+' item'+(total!==1?'s':'')+' waiting for your approval</div>'
+      +'<div style="font-size:12px;color:#b45309;margin-top:2px">'+(pA>0?pA+' attendance record'+(pA!==1?'s':''):'')+((pA>0&&pL>0)?' · ':'')+( pL>0?pL+' leave request'+(pL!==1?'s':''):'')+' </div>'
+      +'<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'
+      +(pA>0?'<button class="btn btn-o btn-sm" style="border-color:#fcd34d;color:#92400e" onclick="go(\'/admin/att\')">Review Attendance &rarr;</button>':'')
+      +(pL>0?'<button class="btn btn-o btn-sm" style="border-color:#fcd34d;color:#92400e" onclick="go(\'/admin/leave\')">Review Leaves &rarr;</button>':'')
+      +'</div></div>'
+      +'<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:#b45309;font-size:16px;flex-shrink:0;padding:0">&#x2715;</button>'
+      +'</div>':'')
+    +'<div class="g4" style="margin-bottom:20px">'
+    +'<div class="stat-card" style="background:#0f766e;color:#fff;cursor:pointer" onclick="go(\'/admin/att\')">'
+    +'<div style="font-size:11px;font-weight:600;opacity:.8;margin-bottom:6px">PENDING ATTENDANCE</div>'
+    +'<div style="font-size:32px;font-weight:700">'+pA+'</div>'
+    +'<div style="font-size:11px;opacity:.7;margin-top:4px">Requires approval</div>'
+    +'<div style="font-size:11px;margin-top:8px;text-decoration:underline;opacity:.9">Review now &rarr;</div>'
+    +'</div>'
+    +'<div class="stat-card" style="'+(pL>0?'border:1px solid #fcd34d;':'')+' cursor:pointer" onclick="go(\'/admin/leave\')">'
+    +'<div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">PENDING LEAVES</div>'
+    +'<div style="font-size:32px;font-weight:700;color:'+(pL>0?'#d97706':'#1e293b')+'">'+pL+'</div>'
+    +'<div style="font-size:11px;color:#94a3b8;margin-top:4px">Leave requests</div>'
+    +'<div style="font-size:11px;margin-top:8px;color:#0f766e;text-decoration:underline">Review now &rarr;</div>'
+    +'</div>'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">ABSENT TODAY</div><div style="font-size:32px;font-weight:700;color:#ef4444">'+absent+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">Staff members absent</div></div>'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">TOTAL STAFF</div><div style="font-size:32px;font-weight:700;color:#3b82f6">'+staff.length+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">Active employees</div></div>'
+    +'</div>'
+    +'<div class="g2">'
+    +'<div class="card"><h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Pending Attendance</h3>'
+    +att.filter(function(a){return a.status==='pending';}).slice(0,5).map(function(a){
+      var u=getU().filter(function(x){return x.id===a.userId;})[0];
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f1f5f9">'
+        +'<div><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div>'
+        +'<div style="font-size:11px;color:#64748b">'+fd(a.date)+' &middot; '+a.type.replace(/_/g,' ')+'</div></div>'
+        +'<div style="display:flex;gap:4px">'
+        +'<button class="btn btn-s btn-sm" onclick="approveAtt('+a.id+')">&#10003;</button>'
+        +'<button class="btn btn-d btn-sm" onclick="rejectAtt('+a.id+')">&#10005;</button>'
+        +'</div></div>';
+    }).join('')||'<p style="color:#94a3b8;font-size:13px">No pending requests</p>'
+    +'</div>'
+    +'<div class="card"><h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Staff Today</h3>'
+    +staff.map(function(u){
+      var todayA=att.filter(function(a){return a.userId===u.id&&a.date===td();})[0];
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">'
+        +'<div style="width:30px;height:30px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">'+u.name.charAt(0)+'</div>'
+        +'<div style="flex:1"><div style="font-weight:500;font-size:13px">'+u.name+'</div><div style="font-size:11px;color:#64748b">'+( u.designation||'')+'</div></div>'
+        +badge(todayA?(todayA.status==='approved'?todayA.type:'pending'):'not_submitted')
+        +'</div>';
+    }).join('')
+    +'</div></div></div>';
 }
 
-// ===================== ADMIN ATTENDANCE =====================
-function pageAdminAttendance(){
-  const att=getAtt();
-  const users=getUsers().filter(u=>u.role==='employee');
-  return`
-  <div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div><h1 style="font-size:22px;font-weight:700">Manage Attendance</h1><p style="color:#64748b;font-size:14px">Review and approve staff attendance.</p></div>
-    </div>
-    <div class="card">
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
-          <tbody>
-            ${att.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No attendance records</td></tr>':
-            att.slice().reverse().map(a=>{
-              const u=users.find(x=>x.id===a.userId);
-              return`<tr>
-                <td><div style="font-weight:500">${u?u.name:'?'}</div><div style="font-size:12px;color:#64748b">${u?u.designation||'':''}</div></td>
-                <td>${fmtDate(a.date)}</td>
-                <td>${attBadge(a.type)}</td>
-                <td>${attBadge(a.status)}</td>
-                <td style="max-width:160px;font-size:13px;color:#64748b">${a.notes||'—'}</td>
-                <td>
-                  ${a.status==='pending'?`
-                    <button class="btn btn-success" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="approveAtt(${a.id})">Approve</button>
-                    <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="rejectAtt(${a.id})">Reject</button>`
-                  :`<span style="color:#94a3b8;font-size:13px">${a.status}</span>`}
-                </td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>`;
+// ============ ADMIN ATTENDANCE ============
+function pgAdminAtt(){
+  var att=getA().slice().reverse();
+  var users=getU().filter(function(u){return u.role==='employee';});
+  return '<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+    +'<div><h1 style="font-size:22px;font-weight:700">Manage Attendance</h1><p style="color:#64748b;font-size:13px">Review and approve staff attendance records.</p></div></div>'
+    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>'
+    +(att.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No attendance records</td></tr>':
+    att.map(function(a){
+      var u=users.filter(function(x){return x.id===a.userId;})[0];
+      return '<tr>'
+        +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div><div style="font-size:11px;color:#64748b">'+(u&&u.designation?u.designation:'')+'</div></td>'
+        +'<td>'+fd(a.date)+'</td><td>'+badge(a.type)+'</td><td>'+badge(a.status)+'</td>'
+        +'<td style="max-width:140px;font-size:12px;color:#64748b">'+(a.notes||'&mdash;')+'</td>'
+        +'<td>'+(a.status==='pending'
+          ?'<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveAtt('+a.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectAtt('+a.id+')">Reject</button>'
+          :'<span style="color:#94a3b8;font-size:12px">'+a.status+'</span>')+'</td></tr>';
+    }).join(''))
+    +'</tbody></table></div></div></div>';
 }
-
 function approveAtt(id){
-  const att=getAtt();
-  const i=att.findIndex(a=>a.id===id);
-  if(i>=0){att[i].status='approved';saveAtt(att);}
-  navigate(currentPath);
-  toast('Attendance approved');
+  var att=getA();var i=att.findIndex(function(a){return a.id===id;});
+  if(i<0)return;att[i].status='approved';setA(att);
+  var r=att[i];
+  var isCO=r.type==='sunday_work'||r.type==='holiday_work';
+  pushNotif(r.userId,isCO?'Attendance Approved + Comp Off Earned':'Attendance Approved',isCO?'Your '+r.type.replace(/_/g,' ')+' on '+fd(r.date)+' is approved. A Comp Off is credited.':'Your attendance for '+fd(r.date)+' ('+r.type.replace(/_/g,' ')+') is approved.','success');
+  go(CP);toast('Attendance approved');
 }
 function rejectAtt(id){
-  const att=getAtt();
-  const i=att.findIndex(a=>a.id===id);
-  if(i>=0){att[i].status='rejected';saveAtt(att);}
-  navigate(currentPath);
-  toast('Attendance rejected');
+  var att=getA();var i=att.findIndex(function(a){return a.id===id;});
+  if(i<0)return;att[i].status='rejected';setA(att);
+  var r=att[i];
+  pushNotif(r.userId,'Attendance Rejected','Your attendance for '+fd(r.date)+' ('+r.type.replace(/_/g,' ')+') was rejected.','error');
+  go(CP);toast('Attendance rejected');
 }
 
-// ===================== ADMIN LEAVES =====================
-function pageAdminLeaves(){
-  const leaves=getLeaves();
-  const users=getUsers();
-  return`
-  <div>
-    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Manage Leaves</h1><p style="color:#64748b;font-size:14px">Review and approve leave requests.</p></div>
-    <div class="card"><div style="overflow-x:auto"><table>
-      <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead>
-      <tbody>
-        ${leaves.length===0?'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:32px">No leave requests</td></tr>':
-        leaves.slice().reverse().map(l=>{
-          const u=users.find(x=>x.id===l.userId);
-          return`<tr>
-            <td><div style="font-weight:500">${u?u.name:'?'}</div></td>
-            <td>${attBadge(l.type)}</td>
-            <td>${fmtDate(l.startDate)}</td>
-            <td>${fmtDate(l.endDate)}</td>
-            <td style="max-width:160px;font-size:13px;color:#64748b">${l.reason||'—'}</td>
-            <td>${attBadge(l.status)}</td>
-            <td>
-              ${l.status==='pending'?`
-                <button class="btn btn-success" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="approveLeave(${l.id})">Approve</button>
-                <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="rejectLeave(${l.id})">Reject</button>`
-              :`<span style="color:#94a3b8;font-size:13px">${l.status}</span>`}
-            </td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div></div>
-  </div>`;
+// ============ ADMIN LEAVES ============
+function pgAdminLeave(){
+  var leaves=getL().slice().reverse();
+  var users=getU();
+  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Manage Leaves</h1><p style="color:#64748b;font-size:13px">Review and approve leave requests.</p></div>'
+    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
+    +(leaves.length===0?'<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:32px">No leave requests</td></tr>':
+    leaves.map(function(l){
+      var u=users.filter(function(x){return x.id===l.userId;})[0];
+      var days=l.days||(Math.round((new Date(l.endDate)-new Date(l.startDate))/86400000)+1);
+      return '<tr>'
+        +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div></td>'
+        +'<td>'+badge(l.type)+'</td><td>'+fd(l.startDate)+'</td><td>'+fd(l.endDate)+'</td>'
+        +'<td style="text-align:center">'+days+'</td>'
+        +'<td style="max-width:140px;font-size:12px;color:#64748b">'+(l.reason||'&mdash;')+'</td>'
+        +'<td>'+badge(l.status)+'</td>'
+        +'<td>'+(l.status==='pending'
+          ?'<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveLeave('+l.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectLeave('+l.id+')">Reject</button>'
+          :'<span style="color:#94a3b8;font-size:12px">'+l.status+'</span>')+'</td></tr>';
+    }).join(''))
+    +'</tbody></table></div></div></div>';
 }
-
 function approveLeave(id){
-  const leaves=getLeaves();
-  const i=leaves.findIndex(l=>l.id===id);
-  if(i>=0){leaves[i].status='approved';saveLeaves(leaves);}
-  navigate(currentPath);toast('Leave approved');
+  var leaves=getL();var i=leaves.findIndex(function(l){return l.id===id;});
+  if(i<0)return;leaves[i].status='approved';setL(leaves);
+  var r=leaves[i];var days=r.days||(Math.round((new Date(r.endDate)-new Date(r.startDate))/86400000)+1);
+  pushNotif(r.userId,'Leave Approved','Your '+r.type.replace(/_/g,' ')+' ('+fd(r.startDate)+' - '+fd(r.endDate)+', '+days+' day'+(days!==1?'s':'')+') is approved.','success');
+  go(CP);toast('Leave approved');
 }
 function rejectLeave(id){
-  const leaves=getLeaves();
-  const i=leaves.findIndex(l=>l.id===id);
-  if(i>=0){leaves[i].status='rejected';saveLeaves(leaves);}
-  navigate(currentPath);toast('Leave rejected');
+  var leaves=getL();var i=leaves.findIndex(function(l){return l.id===id;});
+  if(i<0)return;leaves[i].status='rejected';setL(leaves);
+  var r=leaves[i];
+  pushNotif(r.userId,'Leave Rejected','Your '+r.type.replace(/_/g,' ')+' request ('+fd(r.startDate)+' - '+fd(r.endDate)+') was rejected.','error');
+  go(CP);toast('Leave rejected');
 }
 
-// ===================== ADMIN STAFF =====================
-function pageAdminStaff(){
-  const users=getUsers().filter(u=>u.role==='employee');
-  return`
-  <div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div><h1 style="font-size:22px;font-weight:700">Staff Directory</h1><p style="color:#64748b;font-size:14px">Manage employees.</p></div>
-      <button class="btn btn-primary" onclick="openAddStaff()">+ Add Employee</button>
-    </div>
-    <div class="card"><div style="overflow-x:auto"><table>
-      <thead><tr><th>Name</th><th>Username</th><th>Department</th><th>Designation</th><th>Salary/mo</th><th>Status</th><th>Actions</th></tr></thead>
-      <tbody>
-        ${users.map(u=>`<tr>
-          <td><div style="display:flex;align-items:center;gap:10px">
-            <div style="width:32px;height:32px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0">${u.name.charAt(0)}</div>
-            <div><div style="font-weight:500">${u.name}</div><div style="font-size:12px;color:#64748b">${u.email}</div></div>
-          </div></td>
-          <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px">${u.username}</code></td>
-          <td>${u.department||'—'}</td>
-          <td>${u.designation||'—'}</td>
-          <td>${rupee(u.monthlySalary)}</td>
-          <td><span class="badge ${u.isActive?'badge-green':'badge-red'}">${u.isActive?'Active':'Inactive'}</span></td>
-          <td>
-            <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="openEditStaff(${u.id})">Edit</button>
-            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteStaff(${u.id})">Delete</button>
-          </td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div></div>
-  </div>`;
+// ============ ADMIN STAFF ============
+function pgAdminStaff(){
+  var users=getU().filter(function(u){return u.role==='employee';});
+  return '<div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+    +'<div><h1 style="font-size:22px;font-weight:700">Staff Directory</h1><p style="color:#64748b;font-size:13px">Manage your employees.</p></div>'
+    +'<button class="btn btn-p" onclick="openAddStaff()">+ Add Employee</button></div>'
+    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Name</th><th>Username</th><th>Department</th><th>Designation</th><th>Salary/mo</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
+    +users.map(function(u){
+      return '<tr>'
+        +'<td><div style="display:flex;align-items:center;gap:10px">'
+        +'<div style="width:30px;height:30px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">'+u.name.charAt(0)+'</div>'
+        +'<div><div style="font-weight:500;font-size:13px">'+u.name+'</div><div style="font-size:11px;color:#64748b">'+u.email+'</div></div></div></td>'
+        +'<td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:11px">'+u.username+'</code></td>'
+        +'<td>'+(u.department||'&mdash;')+'</td><td>'+(u.designation||'&mdash;')+'</td>'
+        +'<td>'+ru(u.monthlySalary)+'</td>'
+        +'<td>'+badge(u.isActive?'active':'inactive')+'</td>'
+        +'<td><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="openEditStaff('+u.id+')">Edit</button>'
+        +'<button class="btn btn-d btn-sm" onclick="delStaff('+u.id+')">Delete</button></td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div></div></div>';
 }
-
-function staffFormHtml(u={}){
-  return`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div style="grid-column:1/-1"><label class="label">Full Name</label><input class="input" id="sf_name" value="${u.name||''}" /></div>
-      <div><label class="label">Username</label><input class="input" id="sf_user" value="${u.username||''}" /></div>
-      <div><label class="label">Password ${u.id?'(leave blank to keep)':''}</label><input class="input" type="password" id="sf_pass" /></div>
-      <div><label class="label">Email</label><input class="input" id="sf_email" value="${u.email||''}" /></div>
-      <div><label class="label">Phone</label><input class="input" id="sf_phone" value="${u.phone||''}" /></div>
-      <div><label class="label">Department</label><input class="input" id="sf_dept" value="${u.department||''}" /></div>
-      <div><label class="label">Designation</label><input class="input" id="sf_desig" value="${u.designation||''}" /></div>
-      <div style="grid-column:1/-1"><label class="label">Monthly Salary (₹)</label><input class="input" type="number" id="sf_sal" value="${u.monthlySalary||''}" /></div>
-    </div>`;
+function staffForm(u){
+  u=u||{};
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div style="grid-column:1/-1"><label class="label">Full Name</label><input class="input" id="sf_name" value="'+(u.name||'')+'"/></div>'
+    +'<div><label class="label">Username</label><input class="input" id="sf_user" value="'+(u.username||'')+'"/></div>'
+    +'<div><label class="label">Password '+(u.id?'(blank=keep)':'')+'</label><input class="input" type="password" id="sf_pass"/></div>'
+    +'<div><label class="label">Email</label><input class="input" id="sf_email" value="'+(u.email||'')+'"/></div>'
+    +'<div><label class="label">Phone</label><input class="input" id="sf_phone" value="'+(u.phone||'')+'"/></div>'
+    +'<div><label class="label">Department</label><input class="input" id="sf_dept" value="'+(u.department||'')+'"/></div>'
+    +'<div><label class="label">Designation</label><input class="input" id="sf_desig" value="'+(u.designation||'')+'"/></div>'
+    +'<div style="grid-column:1/-1"><label class="label">Monthly Salary ('+String.fromCharCode(8377)+')</label><input class="input" type="number" id="sf_sal" value="'+(u.monthlySalary||'')+'"/></div>'
+    +'</div>';
 }
-
-function openAddStaff(){
-  openModal(`<h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Employee</h2>
-    ${staffFormHtml()}
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveStaff()">Add Employee</button>
-    </div>`);
-}
-
-function openEditStaff(id){
-  const u=getUsers().find(x=>x.id===id);
-  if(!u)return;
-  openModal(`<h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Employee</h2>
-    ${staffFormHtml(u)}
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveStaff(${id})">Save Changes</button>
-    </div>`);
-}
-
+function openAddStaff(){openModal('<div style="padding:20px"><h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Add Employee</h2>'+staffForm()+'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveStaff()">Add</button></div></div>');}
+function openEditStaff(id){var u=getU().filter(function(x){return x.id===id;})[0];if(!u)return;openModal('<div style="padding:20px"><h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Edit Employee</h2>'+staffForm(u)+'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveStaff('+id+')">Save</button></div></div>');}
 function saveStaff(id){
-  const users=getUsers();
-  const name=document.getElementById('sf_name').value.trim();
-  const username=document.getElementById('sf_user').value.trim();
-  const pass=document.getElementById('sf_pass').value;
-  const email=document.getElementById('sf_email').value.trim();
-  const phone=document.getElementById('sf_phone').value.trim();
-  const dept=document.getElementById('sf_dept').value.trim();
-  const desig=document.getElementById('sf_desig').value.trim();
-  const sal=Number(document.getElementById('sf_sal').value)||0;
-  if(!name||!username){toast('Name and username are required','error');return;}
-  if(id){
-    const i=users.findIndex(u=>u.id===id);
-    if(i>=0){
-      users[i]={...users[i],name,username,email,phone,department:dept,designation:desig,monthlySalary:sal};
-      if(pass) users[i].password=pass;
-    }
-  } else {
-    if(!pass){toast('Password required','error');return;}
-    users.push({id:nextId(users),username,password:pass,name,role:'employee',email,phone,designation:desig,department:dept,monthlySalary:sal,isActive:true,createdAt:today()});
-  }
-  saveUsers(users);closeModal();navigate(currentPath);toast('Employee saved');
+  var users=getU();
+  var name=document.getElementById('sf_name').value.trim();
+  var username=document.getElementById('sf_user').value.trim();
+  var pass=document.getElementById('sf_pass').value;
+  var email=document.getElementById('sf_email').value.trim();
+  var phone=document.getElementById('sf_phone').value.trim();
+  var dept=document.getElementById('sf_dept').value.trim();
+  var desig=document.getElementById('sf_desig').value.trim();
+  var sal=Number(document.getElementById('sf_sal').value)||0;
+  if(!name||!username){toast('Name and username required','err');return;}
+  if(id){var i=users.findIndex(function(u){return u.id===id;});if(i>=0){users[i]=Object.assign({},users[i],{name:name,username:username,email:email,phone:phone,department:dept,designation:desig,monthlySalary:sal});if(pass)users[i].password=pass;}}
+  else{if(!pass){toast('Password required','err');return;}users.push({id:nid(users),username:username,password:pass,name:name,role:'employee',email:email,phone:phone,designation:desig,department:dept,monthlySalary:sal,isActive:true});}
+  setU(users);closeModal();go(CP);toast('Employee saved');renderSwitchMenus();
 }
+function delStaff(id){if(!confirm('Delete this employee?'))return;setU(getU().filter(function(u){return u.id!==id;}));go(CP);toast('Deleted');renderSwitchMenus();}
 
-function deleteStaff(id){
-  if(!confirm('Delete this employee?'))return;
-  const users=getUsers().filter(u=>u.id!==id);
-  saveUsers(users);navigate(currentPath);toast('Employee deleted');
+// ============ ADMIN SALARY ============
+function pgAdminSalary(){
+  var now=new Date();var mo=now.getMonth()+1;var yr=now.getFullYear();
+  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Payroll</h1><p style="color:#64748b;font-size:13px">Calculate and approve monthly salary.</p></div>'
+    +'<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<select class="input" id="salMo" style="width:130px" onchange="refreshSal()">'
+    +[0,1,2,3,4,5,6,7,8,9,10,11].map(function(i){return '<option value="'+(i+1)+'"'+(i+1===mo?' selected':'')+'>'+mn(i+1)+'</option>';}).join('')
+    +'</select>'
+    +'<select class="input" id="salYr" style="width:90px" onchange="refreshSal()">'
+    +[2023,2024,2025,2026].map(function(y){return '<option value="'+y+'"'+(y===yr?' selected':'')+'>'+y+'</option>';}).join('')
+    +'</select>'
+    +'<button class="btn btn-p" onclick="runPayroll()">Run Payroll</button></div>'
+    +'<div id="salTbl">'+renderSalTbl(mo,yr)+'</div></div></div>';
 }
-
-// ===================== ADMIN SALARY =====================
-function pageAdminSalary(){
-  const now=new Date();
-  const month=now.getMonth()+1;
-  const year=now.getFullYear();
-  const users=getUsers().filter(u=>u.role==='employee');
-  const sal=getSal();
-  return`
-  <div>
-    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Payroll</h1><p style="color:#64748b;font-size:14px">Calculate and approve monthly salary.</p></div>
-    <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-        <select class="input" id="salMonth" style="width:140px" onchange="refreshSalary()">
-          ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===month?'selected':''}>${monthName(i+1)}</option>`).join('')}
-        </select>
-        <select class="input" id="salYear" style="width:100px" onchange="refreshSalary()">
-          ${[2023,2024,2025,2026].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
-        </select>
-        <button class="btn btn-primary" onclick="runPayroll()">Run Payroll</button>
-      </div>
-      <div id="salaryTable">${renderSalaryTable(month,year)}</div>
-    </div>
-  </div>`;
+function renderSalTbl(month,year){
+  var users=getU().filter(function(u){return u.role==='employee';});
+  return '<div style="overflow-x:auto"><table><thead><tr><th>Employee</th><th>Monthly</th><th>Paid Days</th><th>Gross</th><th>Deductions</th><th>Net Pay</th><th>Status</th><th>Action</th></tr></thead><tbody>'
+    +users.map(function(u){
+      var c=calcSal(u.id,month,year);
+      var sr=getS().filter(function(s){return s.userId===u.id&&s.month===month&&s.year===year;})[0];
+      return '<tr><td><div style="font-weight:500;font-size:13px">'+u.name+'</div><div style="font-size:11px;color:#64748b">'+(u.designation||'')+'</div></td>'
+        +'<td>'+ru(c.mo)+'</td><td>'+c.paid.toFixed(1)+'/'+c.wd+'</td>'
+        +'<td>'+ru(c.gross)+'</td><td style="color:#ef4444">'+ru(c.ded)+'</td>'
+        +'<td style="font-weight:600;color:#0f766e">'+ru(c.net)+'</td>'
+        +'<td>'+(sr?badge(sr.status):'<span class="badge bg-gray">Not Run</span>')+'</td>'
+        +'<td>'+(sr&&sr.status==='pending'?'<button class="btn btn-s btn-sm" onclick="approveSal('+u.id+','+month+','+year+')">Approve</button>':'&mdash;')+'</td></tr>';
+    }).join('')
+    +'</tbody></table></div>';
 }
-
-function renderSalaryTable(month,year){
-  const users=getUsers().filter(u=>u.role==='employee');
-  return`<div style="overflow-x:auto"><table>
-    <thead><tr><th>Employee</th><th>Monthly Salary</th><th>Paid Days</th><th>Gross</th><th>Deductions</th><th>Net Pay</th><th>Status</th><th>Action</th></tr></thead>
-    <tbody>
-      ${users.map(u=>{
-        const c=calcSalary(u.id,month,year);
-        const salRec=getSal().find(s=>s.userId===u.id&&s.month===month&&s.year===year);
-        return`<tr>
-          <td><div style="font-weight:500">${u.name}</div><div style="font-size:12px;color:#64748b">${u.designation||''}</div></td>
-          <td>${rupee(c.monthly)}</td>
-          <td>${c.paid.toFixed(1)} / ${c.workDays}</td>
-          <td>${rupee(c.gross)}</td>
-          <td style="color:#ef4444">${rupee(c.deductions)}</td>
-          <td style="font-weight:600;color:#0f766e">${rupee(c.net)}</td>
-          <td>${salRec?attBadge(salRec.status):'<span class="badge badge-gray">Not Run</span>'}</td>
-          <td>${salRec&&salRec.status==='pending'?`<button class="btn btn-success" style="padding:4px 10px;font-size:12px" onclick="approveSalary(${u.id},${month},${year})">Approve</button>`:'—'}</td>
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table></div>`;
-}
-
-function refreshSalary(){
-  const m=Number(document.getElementById('salMonth').value);
-  const y=Number(document.getElementById('salYear').value);
-  document.getElementById('salaryTable').innerHTML=renderSalaryTable(m,y);
-}
-
+function refreshSal(){var m=Number(document.getElementById('salMo').value);var y=Number(document.getElementById('salYr').value);document.getElementById('salTbl').innerHTML=renderSalTbl(m,y);}
 function runPayroll(){
-  const m=Number(document.getElementById('salMonth').value);
-  const y=Number(document.getElementById('salYear').value);
-  const users=getUsers().filter(u=>u.role==='employee');
-  let sal=getSal();
-  users.forEach(u=>{
-    if(!sal.find(s=>s.userId===u.id&&s.month===m&&s.year===y)){
-      const c=calcSalary(u.id,m,y);
-      sal.push({id:nextId(sal),userId:u.id,month:m,year:y,status:'pending',...c});
+  var m=Number(document.getElementById('salMo').value);var y=Number(document.getElementById('salYr').value);
+  var users=getU().filter(function(u){return u.role==='employee';});var sal=getS();
+  users.forEach(function(u){
+    if(!sal.filter(function(s){return s.userId===u.id&&s.month===m&&s.year===y;}).length){
+      var c=calcSal(u.id,m,y);sal.push(Object.assign({id:nid(sal),userId:u.id,month:m,year:y,status:'pending'},c));
     }
   });
-  saveSal(sal);refreshSalary();toast('Payroll generated');
+  setS(sal);refreshSal();toast('Payroll generated');
+}
+function approveSal(uid,month,year){
+  var sal=getS();var i=sal.findIndex(function(s){return s.userId===uid&&s.month===month&&s.year===year;});
+  if(i>=0){sal[i].status='approved';setS(sal);}
+  var c=calcSal(uid,month,year);
+  pushNotif(uid,'Salary Credited','Your salary of '+ru(c.net)+' for '+mn(month)+' '+year+' has been processed.','success');
+  refreshSal();toast('Salary approved');
 }
 
-function approveSalary(userId,month,year){
-  const sal=getSal();
-  const i=sal.findIndex(s=>s.userId===userId&&s.month===month&&s.year===year);
-  if(i>=0){sal[i].status='approved';saveSal(sal);}
-  refreshSalary();toast('Salary approved');
+// ============ ADMIN HOLIDAYS ============
+function pgAdminHol(){
+  var hols=getH().slice().sort(function(a,b){return a.date.localeCompare(b.date);});
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  return '<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+    +'<div><h1 style="font-size:22px;font-weight:700">Holidays</h1><p style="color:#64748b;font-size:13px">Manage company holiday calendar.</p></div>'
+    +'<button class="btn btn-p" onclick="openAddHol()">+ Add Holiday</button></div>'
+    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Name</th><th>Date</th><th>Day</th><th>Actions</th></tr></thead><tbody>'
+    +hols.map(function(h){
+      var d=new Date(h.date+'T00:00:00');
+      return '<tr><td style="font-weight:500">'+h.name+'</td><td>'+fd(h.date)+'</td><td>'+days[d.getDay()]+'</td>'
+        +'<td><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="openEditHol('+h.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="delHol('+h.id+')">Delete</button></td></tr>';
+    }).join('')
+    +'</tbody></table></div></div></div>';
 }
-
-// ===================== ADMIN HOLIDAYS =====================
-function pageAdminHolidays(){
-  const hols=getHols();
-  return`
-  <div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div><h1 style="font-size:22px;font-weight:700">Holidays</h1><p style="color:#64748b;font-size:14px">Manage company holiday calendar.</p></div>
-      <button class="btn btn-primary" onclick="openAddHol()">+ Add Holiday</button>
-    </div>
-    <div class="card"><div style="overflow-x:auto"><table>
-      <thead><tr><th>Name</th><th>Date</th><th>Day</th><th>Actions</th></tr></thead>
-      <tbody>
-        ${hols.sort((a,b)=>a.date.localeCompare(b.date)).map(h=>{
-          const d=new Date(h.date+'T00:00:00');
-          const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-          return`<tr>
-            <td style="font-weight:500">${h.name}</td>
-            <td>${fmtDate(h.date)}</td>
-            <td>${days[d.getDay()]}</td>
-            <td>
-              <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="openEditHol(${h.id})">Edit</button>
-              <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteHol(${h.id})">Delete</button>
-            </td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div></div>
-  </div>`;
-}
-
-function openAddHol(){
-  openModal(`<h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Holiday</h2>
-    <div class="space-y-3">
-      <div><label class="label">Name</label><input class="input" id="hol_name" placeholder="e.g. Diwali" /></div>
-      <div><label class="label">Date</label><input class="input" type="date" id="hol_date" /></div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveHol()">Add</button>
-    </div>`);
-}
-
-function openEditHol(id){
-  const h=getHols().find(x=>x.id===id);
-  if(!h)return;
-  openModal(`<h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Holiday</h2>
-    <div class="space-y-3">
-      <div><label class="label">Name</label><input class="input" id="hol_name" value="${h.name}" /></div>
-      <div><label class="label">Date</label><input class="input" type="date" id="hol_date" value="${h.date}" /></div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveHol(${id})">Save</button>
-    </div>`);
-}
-
+function openAddHol(){openModal('<div style="padding:20px"><h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Add Holiday</h2><div style="margin-bottom:10px"><label class="label">Name</label><input class="input" id="hn" placeholder="e.g. Diwali"/></div><div><label class="label">Date</label><input class="input" type="date" id="hd"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveHol()">Add</button></div></div>');}
+function openEditHol(id){var h=getH().filter(function(x){return x.id===id;})[0];if(!h)return;openModal('<div style="padding:20px"><h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Edit Holiday</h2><div style="margin-bottom:10px"><label class="label">Name</label><input class="input" id="hn" value="'+h.name+'"/></div><div><label class="label">Date</label><input class="input" type="date" id="hd" value="'+h.date+'"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveHol('+id+')">Save</button></div></div>');}
 function saveHol(id){
-  const name=document.getElementById('hol_name').value.trim();
-  const date=document.getElementById('hol_date').value;
-  if(!name||!date){toast('Name and date required','error');return;}
-  const hols=getHols();
-  if(id){const i=hols.findIndex(h=>h.id===id);if(i>=0)hols[i]={...hols[i],name,date};}
-  else hols.push({id:nextId(hols),name,date});
-  saveHols(hols);closeModal();navigate(currentPath);toast('Holiday saved');
+  var name=document.getElementById('hn').value.trim();var date=document.getElementById('hd').value;
+  if(!name||!date){toast('Name and date required','err');return;}
+  var hols=getH();
+  if(id){var i=hols.findIndex(function(h){return h.id===id;});if(i>=0)hols[i]=Object.assign({},hols[i],{name:name,date:date});}
+  else hols.push({id:nid(hols),name:name,date:date});
+  setH(hols);closeModal();go(CP);toast('Holiday saved');
+}
+function delHol(id){if(!confirm('Delete?'))return;setH(getH().filter(function(h){return h.id!==id;}));go(CP);toast('Deleted');}
+
+// ============ ADMIN REPORTS ============
+function pgAdminReports(){
+  var users=getU().filter(function(u){return u.role==='employee';});
+  var att=getA();var now=new Date();var m=now.getMonth()+1;var y=now.getFullYear();
+  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Reports</h1><p style="color:#64748b;font-size:13px">Monthly attendance & payroll summary — '+mn(m)+' '+y+'.</p></div>'
+    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Employee</th><th>Present</th><th>Absent</th><th>Half Day</th><th>Leaves</th><th>Net Salary</th></tr></thead><tbody>'
+    +users.map(function(u){
+      var ua=att.filter(function(a){return a.userId===u.id&&a.status==='approved'&&new Date(a.date+'T00:00:00').getMonth()+1===m&&new Date(a.date+'T00:00:00').getFullYear()===y;});
+      var present=ua.filter(function(a){return a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work';}).length;
+      var absent=ua.filter(function(a){return a.type==='absent';}).length;
+      var half=ua.filter(function(a){return a.type==='half_day';}).length;
+      var leave=ua.filter(function(a){return a.type==='leave';}).length;
+      var c=calcSal(u.id,m,y);
+      return '<tr><td><div style="font-weight:500;font-size:13px">'+u.name+'</div><div style="font-size:11px;color:#64748b">'+(u.department||'')+'</div></td>'
+        +'<td>'+badge('present',String(present))+'</td><td>'+badge('absent',String(absent))+'</td>'
+        +'<td><span class="badge bg-yellow">'+half+'</span></td><td><span class="badge bg-blue">'+leave+'</span></td>'
+        +'<td style="font-weight:600;color:#0f766e">'+ru(c.net)+'</td></tr>';
+    }).join('')
+    +'</tbody></table></div></div></div>';
 }
 
-function deleteHol(id){
-  if(!confirm('Delete this holiday?'))return;
-  saveHols(getHols().filter(h=>h.id!==id));navigate(currentPath);toast('Deleted');
+// ============ EMPLOYEE DASHBOARD ============
+function pgEmpDash(){
+  var u=CU;
+  var att=getA().filter(function(a){return a.userId===u.id;});
+  var now=new Date();var m=now.getMonth()+1;var y=now.getFullYear();
+  var mAtt=att.filter(function(a){return a.status==='approved'&&new Date(a.date+'T00:00:00').getMonth()+1===m&&new Date(a.date+'T00:00:00').getFullYear()===y;});
+  var present=mAtt.filter(function(a){return a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work';}).length;
+  var pending=att.filter(function(a){return a.status==='pending';}).length;
+  var bal=leaveBal(u.id);
+  var c=calcSal(u.id,m,y);
+  var hols=getH().filter(function(h){return h.date>=td();}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,4);
+  var unread=getN().filter(function(n){return n.userId===u.id&&!n.read;}).slice(0,3);
+  var ico={success:'&#9989;',error:'&#10060;',warning:'&#9888;',info:'&#8505;'};
+  var wdays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  return '<div>'
+    +'<div style="margin-bottom:16px"><h1 style="font-size:24px;font-weight:700">Hi, '+u.name.split(' ')[0]+' &#128075;</h1>'
+    +'<p style="font-size:12px;color:#64748b;margin-top:2px">'+now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</p></div>'
+    +(unread.length>0?'<div class="alert-blue" style="margin-bottom:16px">'
+      +'<div style="background:#dbeafe;padding:10px 14px;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;justify-content:space-between">'
+      +'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">&#128276;</span><span style="font-size:12px;font-weight:700;color:#1d4ed8">'+unread.length+' new notification'+(unread.length!==1?'s':'')+'</span></div>'
+      +'<button onclick="markAllRead()" style="font-size:11px;color:#2563eb;background:none;border:none;cursor:pointer;font-weight:600">Mark all read &#x2715;</button>'
+      +'</div>'
+      +unread.map(function(n){return '<div style="padding:10px 14px;border-bottom:1px solid #dbeafe;display:flex;align-items:flex-start;gap:8px">'
+        +'<span style="font-size:13px;flex-shrink:0">'+(ico[n.type]||'&#8505;')+'</span>'
+        +'<div><div style="font-size:12px;font-weight:700;color:#1e40af">'+n.title+'</div>'
+        +'<div style="font-size:11px;color:#1e40af;margin-top:1px;opacity:.8">'+n.message+'</div>'
+        +'<div style="font-size:10px;color:#93c5fd;margin-top:3px">'+ago(n.createdAt)+'</div></div></div>';}).join('')
+      +'</div>':'')
+    +'<div class="g4" style="margin-bottom:16px">'
+    +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#9989;</div><div style="font-size:26px;font-weight:700;color:#16a34a">'+present+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Present</div><div style="font-size:10px;color:#94a3b8">This month</div></div>'
+    +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#fffbeb;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#8987;</div><div style="font-size:26px;font-weight:700;color:#d97706">'+pending+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Pending</div><div style="font-size:10px;color:#94a3b8">Awaiting approval</div></div>'
+    +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#128197;</div><div style="font-size:26px;font-weight:700;color:#2563eb">'+bal.casLeft+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Casual Leave</div><div style="font-size:10px;color:#94a3b8">Remaining</div></div>'
+    +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#128260;</div><div style="font-size:26px;font-weight:700;color:#7c3aed">'+bal.compLeft+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Comp Off</div><div style="font-size:10px;color:#94a3b8">Available</div></div>'
+    +'</div>'
+    +'<div class="card" style="margin-bottom:16px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    +'<h3 style="font-weight:700;font-size:15px">Attendance Calendar</h3>'
+    +'<div style="display:flex;align-items:center;gap:4px">'
+    +'<button onclick="calPrev()" style="width:28px;height:28px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">&lsaquo;</button>'
+    +'<span id="calTitle" style="font-size:13px;font-weight:600;width:110px;text-align:center"></span>'
+    +'<button onclick="calNext()" style="width:28px;height:28px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">&rsaquo;</button>'
+    +'</div></div>'
+    +'<div class="cal-grid" style="margin-bottom:4px">'
+    +['S','M','T','W','T','F','S'].map(function(d,i){return '<div style="text-align:center;font-size:10px;font-weight:700;padding:4px 0;color:'+(i===0?'#ef4444':'#94a3b8')+'">'+d+'</div>';}).join('')
+    +'</div>'
+    +'<div class="cal-grid" id="calGrid"></div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9">'
+    +[{cls:'cal-present',l:'Present'},{cls:'cal-half',l:'Half Day'},{cls:'cal-absent',l:'Absent'},{cls:'cal-pending',l:'Pending'},{cls:'cal-leave',l:'Leave'},{cls:'cal-holiday',l:'Holiday'},{cls:'cal-swork',l:'Sun Work'}]
+    .map(function(x){return '<div style="display:flex;align-items:center;gap:4px"><div class="'+x.cls+'" style="width:10px;height:10px;border-radius:3px;flex-shrink:0"></div><span style="font-size:10px;color:#64748b">'+x.l+'</span></div>';}).join('')
+    +'</div>'
+    +'<p style="font-size:10px;color:#94a3b8;text-align:center;margin-top:6px">Tap any coloured day to mark attendance or apply leave</p>'
+    +'</div>'
+    +'<div class="g2" style="margin-bottom:12px">'
+    +'<div class="card" style="padding:16px"><h3 style="font-weight:600;font-size:13px;margin-bottom:12px">Leave Balance</h3>'
+    +[{l:'&#127958; Casual',used:bal.casUsed,total:12,c:'#2563eb'},{l:'&#129298; Sick',used:bal.sikUsed,total:null,c:'#dc2626'},{l:'&#128260; Comp Off',used:null,total:bal.compLeft,c:'#7c3aed'}]
+    .map(function(x){return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#64748b">'+x.l+'</span><span style="font-weight:600">'+(x.used!==null&&x.total!==null?x.used+'/'+x.total+' used':x.used!==null?x.used+' used':x.total+' avail')+'</span></div>'+(x.used!==null&&x.total!==null?'<div style="background:#f1f5f9;border-radius:99px;height:5px"><div style="background:'+x.c+';border-radius:99px;height:5px;width:'+Math.min(100,(x.used/x.total)*100)+'%"></div></div>':'')+'</div>';}).join('')
+    +'</div>'
+    +'<div class="card" style="padding:16px"><h3 style="font-weight:600;font-size:13px;margin-bottom:12px">Upcoming Holidays</h3>'
+    +(hols.length===0?'<p style="color:#94a3b8;font-size:12px">No upcoming holidays</p>':
+    hols.map(function(h){var d=new Date(h.date+'T00:00:00');return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      +'<div style="width:36px;height:36px;border-radius:8px;background:#f3e8ff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">'
+      +'<div style="font-size:8px;font-weight:700;color:#7e22ce;text-transform:uppercase">'+d.toLocaleDateString('en-IN',{month:'short'})+'</div>'
+      +'<div style="font-size:14px;font-weight:700;color:#7e22ce">'+d.getDate()+'</div></div>'
+      +'<div><div style="font-size:12px;font-weight:600">'+h.name+'</div><div style="font-size:10px;color:#64748b">'+wdays[d.getDay()]+'</div></div></div>';}).join(''))
+    +'</div></div>'
+    +'<div class="card" style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid #bbf7d0">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between">'
+    +'<div><div style="font-size:11px;font-weight:600;color:#16a34a;margin-bottom:4px">&#128176; Estimated Salary &mdash; '+mn(m)+' '+y+'</div>'
+    +'<div style="font-size:30px;font-weight:700;color:#15803d">'+ru(c.net)+'</div>'
+    +'<div style="font-size:11px;color:#4ade80;margin-top:3px">'+present+' approved days &middot; Salary &divide; 26 &times; Days</div></div>'
+    +'<div style="width:52px;height:52px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:22px">&#128176;</div>'
+    +'</div></div></div>';
 }
 
-// ===================== ADMIN REPORTS =====================
-function pageAdminReports(){
-  const users=getUsers().filter(u=>u.role==='employee');
-  const att=getAtt();
-  const now=new Date();
-  const m=now.getMonth()+1;const y=now.getFullYear();
-  return`
-  <div>
-    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Reports</h1><p style="color:#64748b;font-size:14px">Monthly attendance and payroll summary.</p></div>
-    <div class="card"><div style="overflow-x:auto"><table>
-      <thead><tr><th>Employee</th><th>Present</th><th>Absent</th><th>Half Day</th><th>Leaves</th><th>Net Salary (${monthName(m)} ${y})</th></tr></thead>
-      <tbody>
-        ${users.map(u=>{
-          const uAtt=att.filter(a=>a.userId===u.id&&a.status==='approved'&&new Date(a.date+'T00:00:00').getMonth()+1===m&&new Date(a.date+'T00:00:00').getFullYear()===y);
-          const present=uAtt.filter(a=>a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work').length;
-          const absent=uAtt.filter(a=>a.type==='absent').length;
-          const half=uAtt.filter(a=>a.type==='half_day').length;
-          const leave=uAtt.filter(a=>a.type==='leave').length;
-          const c=calcSalary(u.id,m,y);
-          return`<tr>
-            <td><div style="font-weight:500">${u.name}</div><div style="font-size:12px;color:#64748b">${u.department||''}</div></td>
-            <td><span class="badge badge-green">${present}</span></td>
-            <td><span class="badge badge-red">${absent}</span></td>
-            <td><span class="badge badge-yellow">${half}</span></td>
-            <td><span class="badge badge-blue">${leave}</span></td>
-            <td style="font-weight:600">${rupee(c.net)}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div></div>
-  </div>`;
+// ============ SUBMIT ATTENDANCE ============
+function pgAttSubmit(){
+  var t=td();var existing=getA().filter(function(a){return a.userId===CU.id&&a.date===t;})[0];
+  var isSun=new Date().getDay()===0;var hols=getH();var isHol=hols.some(function(h){return h.date===t;});
+  var holName=hols.filter(function(h){return h.date===t;}).map(function(h){return h.name;})[0]||'';
+  return '<div style="max-width:520px">'
+    +'<div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Log Attendance</h1><p style="color:#64748b;font-size:13px">Mark your attendance for a specific date.</p></div>'
+    +((isSun||isHol)?'<div style="padding:10px 14px;background:#f3e8ff;border:1px solid #d8b4fe;border-radius:10px;font-size:12px;color:#7e22ce;margin-bottom:14px">&#9889; '+(isHol?holName+' is a holiday.':'Sunday.')+' Logging earns a Comp Off when approved.</div>':'')
+    +'<div class="card">'
+    +(existing?'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#166534">Already submitted &mdash; <strong>'+existing.type.replace(/_/g,' ')+'</strong> ['+existing.status+']</div>':'')
+    +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" type="date" id="ad" value="'+t+'" max="'+t+'"/></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Type</label><select class="input" id="at"><option value="present"'+((!isSun&&!isHol)?'':'')+'>Present</option><option value="absent">Absent</option><option value="half_day">Half Day</option><option value="sunday_work"'+(isSun?' selected':'')+'>Sunday Work (Comp Off)</option><option value="holiday_work"'+(isHol?' selected':'')+'>Holiday Work (Comp Off)</option></select></div>'
+    +'<div style="margin-bottom:14px"><label class="label">Notes (optional)</label><textarea class="input" id="an" rows="3" placeholder="Any notes..."></textarea></div>'
+    +'<button class="btn btn-p" onclick="submitAtt()" style="width:100%;justify-content:center">Submit Attendance</button>'
+    +'</div></div>';
 }
-
-// ===================== EMPLOYEE DASHBOARD =====================
-function pageEmpDashboard(){
-  const u=currentUser;
-  const att=getAtt().filter(a=>a.userId===u.id);
-  const leaves=getLeaves().filter(l=>l.userId===u.id);
-  const now=new Date();const m=now.getMonth()+1;const y=now.getFullYear();
-  const mAtt=att.filter(a=>a.status==='approved'&&new Date(a.date+'T00:00:00').getMonth()+1===m&&new Date(a.date+'T00:00:00').getFullYear()===y);
-  const present=mAtt.filter(a=>a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work').length;
-  const absent=mAtt.filter(a=>a.type==='absent').length;
-  const pendL=leaves.filter(l=>l.status==='pending').length;
-  const bal=leaveBalance(u.id);
-  const c=calcSalary(u.id,m,y);
-  const todayAtt=att.find(a=>a.date===today());
-  return`
-  <div>
-    <h1 style="font-size:26px;font-weight:700;color:#1e293b;margin-bottom:4px">Welcome, ${u.name.split(' ')[0]} 👋</h1>
-    <p style="color:#64748b;margin-bottom:24px">Here's your attendance overview for ${monthName(m)} ${y}.</p>
-    ${todayAtt?`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px;color:#166534">
-      Today's attendance: <strong>${todayAtt.type.replace(/_/g,' ')}</strong> — Status: <strong>${todayAtt.status}</strong>
-    </div>`:`<div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px;color:#854d0e">
-      You haven't submitted today's attendance yet. <span style="cursor:pointer;text-decoration:underline" onclick="navigate('/attendance/submit')">Submit now →</span>
-    </div>`}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
-      ${statCard('Present Days',present,'This month','#0f766e')}
-      ${statCard('Absent Days',absent,'This month','#ef4444')}
-      ${statCard('Pending Leaves',pendL,'Awaiting approval','#f59e0b')}
-      ${statCard('Est. Net Salary',rupee(c.net),monthName(m)+' '+y,'#3b82f6')}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="card">
-        <h3 style="font-weight:600;margin-bottom:16px">Leave Balance</h3>
-        ${[['Casual Leave',bal.casual,12],['Sick Leave',bal.sick,12],['Comp Off',bal.comp_off,10]].map(([label,used,total])=>`
-          <div style="margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-              <span>${label}</span><span style="font-weight:600">${used} / ${total} days left</span>
-            </div>
-            <div style="background:#f1f5f9;border-radius:99px;height:6px">
-              <div style="background:#0f766e;border-radius:99px;height:6px;width:${(used/total)*100}%"></div>
-            </div>
-          </div>`).join('')}
-      </div>
-      <div class="card">
-        <h3 style="font-weight:600;margin-bottom:16px">Recent Attendance</h3>
-        ${att.slice().reverse().slice(0,6).map(a=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9">
-            <span style="font-size:13px;color:#374151">${fmtDate(a.date)}</span>
-            <div style="display:flex;gap:6px">${attBadge(a.type)}${attBadge(a.status)}</div>
-          </div>`).join('')||'<p style="color:#94a3b8;font-size:14px">No records yet</p>'}
-      </div>
-    </div>
-  </div>`;
-}
-
-// ===================== SUBMIT ATTENDANCE =====================
-function pageSubmitAtt(){
-  const t=today();
-  const existing=getAtt().find(a=>a.userId===currentUser.id&&a.date===t);
-  return`
-  <div style="max-width:520px">
-    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Submit Attendance</h1><p style="color:#64748b;font-size:14px">Mark your attendance for today.</p></div>
-    <div class="card">
-      ${existing?`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:16px;font-size:14px;color:#166534">
-        You already submitted attendance for today (${fmtDate(t)}) — <strong>${existing.type.replace(/_/g,' ')}</strong> [${existing.status}]
-      </div>`:''}
-      <div class="space-y-4">
-        <div><label class="label">Date</label><input class="input" type="date" id="att_date" value="${t}" max="${t}" /></div>
-        <div><label class="label">Type</label>
-          <select class="input" id="att_type">
-            <option value="present">Present</option>
-            <option value="absent">Absent</option>
-            <option value="half_day">Half Day</option>
-            <option value="sunday_work">Sunday Work</option>
-            <option value="holiday_work">Holiday Work</option>
-          </select>
-        </div>
-        <div><label class="label">Notes (optional)</label><textarea class="input" id="att_notes" rows="3" placeholder="Any additional notes..."></textarea></div>
-        <button class="btn btn-primary w-full justify-center" onclick="submitAtt()" style="width:100%;justify-content:center">Submit Attendance</button>
-      </div>
-    </div>
-  </div>`;
-}
-
 function submitAtt(){
-  const date=document.getElementById('att_date').value;
-  const type=document.getElementById('att_type').value;
-  const notes=document.getElementById('att_notes').value.trim();
-  if(!date){toast('Select a date','error');return;}
-  const att=getAtt();
-  const exists=att.find(a=>a.userId===currentUser.id&&a.date===date);
-  if(exists){toast('Attendance already submitted for this date','error');return;}
-  att.push({id:nextId(att),userId:currentUser.id,date,type,notes,status:'pending',createdAt:new Date().toISOString()});
-  saveAtt(att);navigate(currentPath);toast('Attendance submitted!');
+  var date=document.getElementById('ad').value;
+  var type=document.getElementById('at').value;
+  var notes=document.getElementById('an').value.trim();
+  if(!date){toast('Select a date','err');return;}
+  var att=getA();
+  if(att.filter(function(a){return a.userId===CU.id&&a.date===date;}).length){toast('Already submitted for this date','err');return;}
+  att.push({id:nid(att),userId:CU.id,date:date,type:type,notes:notes,status:'pending',createdAt:new Date().toISOString()});
+  setA(att);go('/att/history');toast('Attendance submitted!');
 }
 
-// ===================== ATTENDANCE HISTORY =====================
-function pageAttHistory(){
-  const att=getAtt().filter(a=>a.userId===currentUser.id).sort((a,b)=>b.date.localeCompare(a.date));
-  return`
-  <div>
-    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Attendance History</h1><p style="color:#64748b;font-size:14px">All your attendance records.</p></div>
-    <div class="card"><div style="overflow-x:auto"><table>
-      <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Notes</th></tr></thead>
-      <tbody>
-        ${att.length===0?'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:32px">No records</td></tr>':
-        att.map(a=>`<tr>
-          <td>${fmtDate(a.date)}</td>
-          <td>${attBadge(a.type)}</td>
-          <td>${attBadge(a.status)}</td>
-          <td style="font-size:13px;color:#64748b">${a.notes||'—'}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div></div>
-  </div>`;
+// ============ ATTENDANCE HISTORY ============
+function pgAttHistory(){
+  var att=getA().filter(function(a){return a.userId===CU.id;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Attendance History</h1><p style="color:#64748b;font-size:13px">All your attendance records.</p></div>'
+    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Date</th><th>Day</th><th>Type</th><th>Status</th><th>Notes</th></tr></thead><tbody>'
+    +(att.length===0?'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:32px">No records yet</td></tr>':
+    att.map(function(a){var d=new Date(a.date+'T00:00:00');return '<tr><td>'+fd(a.date)+'</td><td style="color:#64748b;font-size:12px">'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+'</td><td>'+badge(a.type)+'</td><td>'+badge(a.status)+'</td><td style="font-size:12px;color:#64748b">'+(a.notes||'&mdash;')+'</td></tr>';}).join(''))
+    +'</tbody></table></div></div></div>';
 }
 
-// ===================== APPLY LEAVE =====================
-function pageApplyLeave(){
-  const bal=leaveBalance(currentUser.id);
-  return`
-  <div style="max-width:520px">
-    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Apply for Leave</h1><p style="color:#64748b;font-size:14px">Submit a leave request.</p></div>
-    <div class="card" style="margin-bottom:16px">
-      <h3 style="font-weight:600;margin-bottom:12px;font-size:14px">Your Leave Balance</h3>
-      <div style="display:flex;gap:16px">
-        <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#0f766e">${bal.casual}</div><div style="font-size:12px;color:#64748b">Casual</div></div>
-        <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#3b82f6">${bal.sick}</div><div style="font-size:12px;color:#64748b">Sick</div></div>
-        <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#f59e0b">${bal.comp_off}</div><div style="font-size:12px;color:#64748b">Comp Off</div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="space-y-4">
-        <div><label class="label">Leave Type</label>
-          <select class="input" id="lv_type">
-            <option value="casual">Casual Leave</option>
-            <option value="sick">Sick Leave</option>
-            <option value="comp_off">Comp Off</option>
-          </select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div><label class="label">From Date</label><input class="input" type="date" id="lv_start" /></div>
-          <div><label class="label">To Date</label><input class="input" type="date" id="lv_end" /></div>
-        </div>
-        <div><label class="label">Reason</label><textarea class="input" id="lv_reason" rows="3" placeholder="Reason for leave..."></textarea></div>
-        <button class="btn btn-primary" onclick="submitLeave()" style="width:100%;justify-content:center">Submit Leave Request</button>
-      </div>
-    </div>
-  </div>`;
+// ============ APPLY LEAVE ============
+function pgLeaveApply(){
+  var bal=leaveBal(CU.id);
+  return '<div style="max-width:520px">'
+    +'<div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Apply for Leave</h1><p style="color:#64748b;font-size:13px">Submit a leave request.</p></div>'
+    +'<div class="card" style="margin-bottom:12px"><h3 style="font-weight:600;font-size:13px;margin-bottom:10px">Your Leave Balance</h3>'
+    +'<div style="display:flex;gap:12px">'
+    +'<div style="text-align:center;flex:1;padding:10px;background:#eff6ff;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#2563eb">'+bal.casLeft+'</div><div style="font-size:10px;color:#64748b">Casual</div></div>'
+    +'<div style="text-align:center;flex:1;padding:10px;background:#fef9c3;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#d97706">&#8734;</div><div style="font-size:10px;color:#64748b">Sick</div></div>'
+    +'<div style="text-align:center;flex:1;padding:10px;background:#f5f3ff;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#7c3aed">'+bal.compLeft+'</div><div style="font-size:10px;color:#64748b">Comp Off</div></div>'
+    +'</div></div>'
+    +'<div class="card">'
+    +'<div style="margin-bottom:10px"><label class="label">Leave Type</label><select class="input" id="lt"><option value="casual">Casual Leave</option><option value="sick">Sick Leave</option><option value="comp_off">Comp Off</option></select></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div><label class="label">From</label><input class="input" type="date" id="lf" onchange="updDays()"/></div><div><label class="label">To</label><input class="input" type="date" id="le" onchange="updDays()"/></div></div>'
+    +'<div id="ldur" style="display:none;padding:8px;background:#f1f5f9;border-radius:8px;text-align:center;font-size:12px;font-weight:600;margin-bottom:10px"></div>'
+    +'<div style="margin-bottom:14px"><label class="label">Reason</label><textarea class="input" id="lr" rows="3" placeholder="Reason..."></textarea></div>'
+    +'<button class="btn btn-p" onclick="submitLeave()" style="width:100%;justify-content:center">Submit Leave Request</button>'
+    +'</div></div>';
 }
-
+function updDays(){
+  var s=document.getElementById('lf');var e=document.getElementById('le');var d=document.getElementById('ldur');
+  if(!s||!e||!d)return;
+  if(s.value&&e.value&&e.value>=s.value){var days=Math.round((new Date(e.value)-new Date(s.value))/86400000)+1;d.style.display='block';d.textContent='Duration: '+days+' day'+(days!==1?'s':'');}
+}
 function submitLeave(){
-  const type=document.getElementById('lv_type').value;
-  const start=document.getElementById('lv_start').value;
-  const end=document.getElementById('lv_end').value;
-  const reason=document.getElementById('lv_reason').value.trim();
-  if(!start||!end||!reason){toast('All fields required','error');return;}
-  if(start>end){toast('End date must be after start date','error');return;}
-  const leaves=getLeaves();
-  leaves.push({id:nextId(leaves),userId:currentUser.id,type,startDate:start,endDate:end,reason,status:'pending',createdAt:new Date().toISOString()});
-  saveLeaves(leaves);navigate(currentPath);toast('Leave request submitted!');
+  var type=document.getElementById('lt').value;
+  var start=document.getElementById('lf').value;var end=document.getElementById('le').value;
+  var reason=document.getElementById('lr').value.trim();
+  if(!start||!end||!reason){toast('All fields required','err');return;}
+  if(start>end){toast('End must be after start','err');return;}
+  var leaves=getL();
+  var days=Math.round((new Date(end)-new Date(start))/86400000)+1;
+  leaves.push({id:nid(leaves),userId:CU.id,type:type,startDate:start,endDate:end,days:days,reason:reason,status:'pending',createdAt:new Date().toISOString()});
+  setL(leaves);go('/leave/history');toast('Leave request submitted!');
 }
 
-// ===================== LEAVE HISTORY =====================
-function pageLeaveHistory(){
-  const leaves=getLeaves().filter(l=>l.userId===currentUser.id).sort((a,b)=>b.startDate.localeCompare(a.startDate));
-  return`
-  <div>
-    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">Leave History</h1><p style="color:#64748b;font-size:14px">All your leave requests.</p></div>
-    <div class="card"><div style="overflow-x:auto"><table>
-      <thead><tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th></tr></thead>
-      <tbody>
-        ${leaves.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No leave requests</td></tr>':
-        leaves.map(l=>{
-          const days=(new Date(l.endDate)-new Date(l.startDate))/(86400000)+1;
-          return`<tr>
-            <td>${attBadge(l.type)}</td>
-            <td>${fmtDate(l.startDate)}</td>
-            <td>${fmtDate(l.endDate)}</td>
-            <td>${days}</td>
-            <td style="font-size:13px;color:#64748b;max-width:160px">${l.reason}</td>
-            <td>${attBadge(l.status)}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div></div>
-  </div>`;
+// ============ LEAVE HISTORY ============
+function pgLeaveHistory(){
+  var leaves=getL().filter(function(l){return l.userId===CU.id;}).sort(function(a,b){return b.startDate.localeCompare(a.startDate);});
+  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Leave History</h1><p style="color:#64748b;font-size:13px">All your leave requests.</p></div>'
+    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th></tr></thead><tbody>'
+    +(leaves.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No leave requests yet</td></tr>':
+    leaves.map(function(l){var days=l.days||(Math.round((new Date(l.endDate)-new Date(l.startDate))/86400000)+1);return '<tr><td>'+badge(l.type)+'</td><td>'+fd(l.startDate)+'</td><td>'+fd(l.endDate)+'</td><td style="text-align:center">'+days+'</td><td style="font-size:12px;color:#64748b;max-width:150px">'+l.reason+'</td><td>'+badge(l.status)+'</td></tr>';}).join(''))
+    +'</tbody></table></div></div></div>';
 }
 
-// ===================== PROFILE =====================
-function pageProfile(){
-  const u=getUsers().find(x=>x.id===currentUser.id)||currentUser;
-  const now=new Date();const m=now.getMonth()+1;const y=now.getFullYear();
-  const c=calcSalary(u.id,m,y);
-  const salRec=getSal().find(s=>s.userId===u.id&&s.month===m&&s.year===y);
-  return`
-  <div style="max-width:680px">
-    <div style="margin-bottom:20px"><h1 style="font-size:22px;font-weight:700">My Profile</h1><p style="color:#64748b;font-size:14px">Personal details and salary slip.</p></div>
-    <div class="card" style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-      <div style="width:56px;height:56px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700">${u.name.charAt(0)}</div>
-      <div><div style="font-size:18px;font-weight:700">${u.name}</div><div style="color:#64748b;font-size:14px">${u.designation||u.role}</div></div>
-    </div>
-    <!-- Tabs -->
-    <div style="display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:16px">
-      <button id="tab1" onclick="showTab('info')" style="padding:10px 20px;border:none;background:none;cursor:pointer;font-weight:600;font-size:14px;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px">Personal Info</button>
-      <button id="tab2" onclick="showTab('salary')" style="padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;color:#64748b">Salary Slip</button>
-    </div>
-    <div id="tabInfo">
-      <div class="card" style="margin-bottom:16px">
-        <h3 style="font-weight:600;margin-bottom:16px">Contact Details</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="grid-column:1/-1"><label class="label">Full Name</label><input class="input" id="p_name" value="${u.name}" /></div>
-          <div><label class="label">Email</label><input class="input" id="p_email" value="${u.email||''}" /></div>
-          <div><label class="label">Phone</label><input class="input" id="p_phone" value="${u.phone||''}" /></div>
-        </div>
-        <div style="margin-top:12px;text-align:right"><button class="btn btn-primary" onclick="saveProfile()">Save Changes</button></div>
-      </div>
-      <div class="card" style="margin-bottom:16px">
-        <h3 style="font-weight:600;margin-bottom:16px">Employment Details</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:14px">
-          <div><div style="color:#64748b;font-size:12px">Department</div><div style="font-weight:500">${u.department||'—'}</div></div>
-          <div><div style="color:#64748b;font-size:12px">Designation</div><div style="font-weight:500">${u.designation||'—'}</div></div>
-          <div><div style="color:#64748b;font-size:12px">Monthly Salary</div><div style="font-weight:500">${rupee(u.monthlySalary)}</div></div>
-          <div><div style="color:#64748b;font-size:12px">Username</div><div style="font-weight:500">${u.username}</div></div>
-        </div>
-      </div>
-      <div class="card">
-        <h3 style="font-weight:600;margin-bottom:16px">Change Password</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="grid-column:1/-1"><label class="label">Current Password</label><input class="input" type="password" id="p_curpass" /></div>
-          <div><label class="label">New Password</label><input class="input" type="password" id="p_newpass" /></div>
-          <div><label class="label">Confirm</label><input class="input" type="password" id="p_confpass" /></div>
-        </div>
-        <div style="margin-top:12px;text-align:right"><button class="btn btn-outline" onclick="changePassword()">Update Password</button></div>
-      </div>
-    </div>
-    <div id="tabSalary" style="display:none">
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <h3 style="font-weight:600">Salary Slip — ${monthName(m)} ${y}</h3>
-          <button class="btn btn-outline" onclick="printSlip()">🖨 Print</button>
-        </div>
-        ${salarySlipHtml(u,c,salRec,m,y)}
-      </div>
-    </div>
-  </div>`;
+// ============ PROFILE ============
+function pgProfile(){
+  var u=getU().filter(function(x){return x.id===CU.id;})[0]||CU;
+  var now=new Date();var m=now.getMonth()+1;var y=now.getFullYear();
+  var c=calcSal(u.id,m,y);var sr=getS().filter(function(s){return s.userId===u.id&&s.month===m&&s.year===y;})[0];
+  return '<div style="max-width:640px">'
+    +'<div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">My Profile</h1><p style="color:#64748b;font-size:13px">Personal details and salary slip.</p></div>'
+    +'<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:14px">'
+    +'<div style="width:52px;height:52px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0">'+u.name.charAt(0)+'</div>'
+    +'<div><div style="font-size:17px;font-weight:700">'+u.name+'</div><div style="color:#64748b;font-size:13px">'+(u.designation||u.role)+'</div></div></div>'
+    +'<div style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:14px">'
+    +'<button id="tp1" onclick="showTab(\'i\')" style="padding:9px 18px;border:none;background:none;cursor:pointer;font-weight:600;font-size:13px;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px">Personal Info</button>'
+    +'<button id="tp2" onclick="showTab(\'s\')" style="padding:9px 18px;border:none;background:none;cursor:pointer;font-size:13px;color:#64748b">Salary Slip</button>'
+    +'</div>'
+    +'<div id="ti">'
+    +'<div class="card" style="margin-bottom:12px"><h3 style="font-weight:600;margin-bottom:12px;font-size:13px">Contact Details</h3>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div style="grid-column:1/-1"><label class="label">Full Name</label><input class="input" id="pn" value="'+u.name+'"/></div>'
+    +'<div><label class="label">Email</label><input class="input" id="pe" value="'+(u.email||'')+'"/></div>'
+    +'<div><label class="label">Phone</label><input class="input" id="pp" value="'+(u.phone||'')+'"/></div>'
+    +'</div><div style="margin-top:10px;text-align:right"><button class="btn btn-p" onclick="saveProf()">Save</button></div></div>'
+    +'<div class="card" style="margin-bottom:12px"><h3 style="font-weight:600;margin-bottom:12px;font-size:13px">Employment Details</h3>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">'
+    +'<div><div style="color:#64748b;font-size:11px">Department</div><div style="font-weight:500">'+(u.department||'&mdash;')+'</div></div>'
+    +'<div><div style="color:#64748b;font-size:11px">Designation</div><div style="font-weight:500">'+(u.designation||'&mdash;')+'</div></div>'
+    +'<div><div style="color:#64748b;font-size:11px">Monthly Salary</div><div style="font-weight:500">'+ru(u.monthlySalary)+'</div></div>'
+    +'<div><div style="color:#64748b;font-size:11px">Username</div><div style="font-weight:500">'+u.username+'</div></div>'
+    +'</div></div>'
+    +'<div class="card"><h3 style="font-weight:600;margin-bottom:12px;font-size:13px">Change Password</h3>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div style="grid-column:1/-1"><label class="label">Current Password</label><input class="input" type="password" id="pc"/></div>'
+    +'<div><label class="label">New Password</label><input class="input" type="password" id="pnw"/></div>'
+    +'<div><label class="label">Confirm</label><input class="input" type="password" id="pcf"/></div>'
+    +'</div><div style="margin-top:10px;text-align:right"><button class="btn btn-o" onclick="changePwd()">Update</button></div></div>'
+    +'</div>'
+    +'<div id="ts" style="display:none"><div class="card">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><h3 style="font-weight:600;font-size:13px">Salary Slip &mdash; '+mn(m)+' '+y+'</h3><button class="btn btn-o btn-sm" onclick="printSlip()">&#128424; Print</button></div>'
+    +'<div id="sc" style="border:1px solid #e2e8f0;border-radius:10px;padding:18px">'
+    +'<div style="display:flex;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:12px;margin-bottom:12px">'
+    +'<div><div style="font-size:16px;font-weight:700;color:#0f766e">Airdoor HR</div><div style="font-size:11px;color:#94a3b8">Salary Slip</div></div>'
+    +'<div style="text-align:right"><div style="font-weight:600;font-size:13px">'+mn(m)+' '+y+'</div>'+badge(sr?sr.status:'pending',sr?sr.status:'draft')+'</div></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;margin-bottom:14px">'
+    +'<div><div style="color:#64748b">Employee</div><div style="font-weight:600">'+u.name+'</div></div>'
+    +(u.designation?'<div><div style="color:#64748b">Designation</div><div style="font-weight:600">'+u.designation+'</div></div>':'')
+    +'</div>'
+    +'<table style="margin-bottom:12px"><thead><tr><th>Earnings</th><th>Days</th><th style="text-align:right">Amount</th></tr></thead>'
+    +'<tbody><tr><td>Monthly CTC</td><td>'+c.wd+'</td><td style="text-align:right">'+ru(c.mo)+'</td></tr>'
+    +'<tr><td>Paid Days</td><td>'+c.paid.toFixed(1)+'</td><td style="text-align:right;color:#16a34a;font-weight:600">'+ru(c.gross)+'</td></tr></tbody></table>'
+    +'<table style="margin-bottom:12px"><thead><tr><th>Deductions</th><th style="text-align:right">Amount</th></tr></thead>'
+    +'<tbody><tr><td>Loss of Pay (LOP)</td><td style="text-align:right;color:#ef4444">'+ru(c.ded)+'</td></tr></tbody></table>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px">'
+    +'<span style="font-weight:600;font-size:13px">Net Salary Payable</span>'
+    +'<span style="font-size:18px;font-weight:700;color:#0f766e">'+ru(c.net)+'</span></div>'
+    +'<p style="text-align:center;color:#94a3b8;font-size:10px;margin-top:10px">Formula: Monthly &divide; '+c.wd+' &times; Paid Days</p>'
+    +'</div></div></div></div>';
 }
-
-function salarySlipHtml(u,c,salRec,m,y){
-  const now=new Date();
-  return`
-  <div id="slipContent" style="border:1px solid #e2e8f0;border-radius:10px;padding:20px">
-    <div style="display:flex;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:14px">
-      <div><div style="font-size:18px;font-weight:700;color:#0f766e">Airdoor</div><div style="font-size:12px;color:#94a3b8">Salary Slip</div></div>
-      <div style="text-align:right"><div style="font-weight:600">${monthName(m)} ${y}</div><span class="badge ${salRec&&salRec.status==='approved'?'badge-green':'badge-yellow'}">${salRec?salRec.status:'draft'}</span></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin-bottom:16px">
-      <div><div style="color:#64748b">Employee</div><div style="font-weight:600">${u.name}</div></div>
-      ${u.designation?`<div><div style="color:#64748b">Designation</div><div style="font-weight:600">${u.designation}</div></div>`:''}
-    </div>
-    <table style="margin-bottom:16px">
-      <thead><tr><th>Earnings</th><th>Days</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody>
-        <tr><td>Monthly Salary</td><td>${c.workDays}</td><td style="text-align:right">${rupee(c.monthly)}</td></tr>
-        <tr><td>Paid Days</td><td>${c.paid.toFixed(1)}</td><td style="text-align:right">${rupee(c.gross)}</td></tr>
-      </tbody>
-    </table>
-    <table style="margin-bottom:16px">
-      <thead><tr><th>Deductions</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody><tr><td>Loss of Pay (LOP)</td><td style="text-align:right;color:#ef4444">${rupee(c.deductions)}</td></tr></tbody>
-    </table>
-    <div style="display:flex;justify-content:space-between;align-items:center;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px">
-      <span style="font-weight:600">Net Salary Payable</span>
-      <span style="font-size:20px;font-weight:700;color:#0f766e">${rupee(c.net)}</span>
-    </div>
-    <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:12px">Generated on ${now.toLocaleDateString('en-IN')} · Formula: Monthly ÷ ${c.workDays} × Paid Days</p>
-  </div>`;
+function showTab(t){
+  document.getElementById('ti').style.display=t==='i'?'':'none';
+  document.getElementById('ts').style.display=t==='s'?'':'none';
+  document.getElementById('tp1').style.cssText='padding:9px 18px;border:none;background:none;cursor:pointer;font-size:13px;'+(t==='i'?'font-weight:600;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px':'color:#64748b;');
+  document.getElementById('tp2').style.cssText='padding:9px 18px;border:none;background:none;cursor:pointer;font-size:13px;'+(t==='s'?'font-weight:600;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px':'color:#64748b;');
 }
-
-function showTab(tab){
-  document.getElementById('tabInfo').style.display=tab==='info'?'':'none';
-  document.getElementById('tabSalary').style.display=tab==='salary'?'':'none';
-  document.getElementById('tab1').style.cssText=`padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;${tab==='info'?'font-weight:600;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px':'color:#64748b;'}`;
-  document.getElementById('tab2').style.cssText=`padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;${tab==='salary'?'font-weight:600;color:#0f766e;border-bottom:2px solid #0f766e;margin-bottom:-2px':'color:#64748b;'}`;
+function saveProf(){
+  var name=document.getElementById('pn').value.trim();var email=document.getElementById('pe').value.trim();var phone=document.getElementById('pp').value.trim();
+  if(!name){toast('Name required','err');return;}
+  var users=getU();var i=users.findIndex(function(u){return u.id===CU.id;});
+  if(i>=0){users[i]=Object.assign({},users[i],{name:name,email:email,phone:phone});CU=Object.assign({},CU,{name:name,email:email,phone:phone});sessionStorage.setItem('hr_sess',JSON.stringify(CU));}
+  setU(users);toast('Profile saved');renderSidebar();
 }
-
-function saveProfile(){
-  const name=document.getElementById('p_name').value.trim();
-  const email=document.getElementById('p_email').value.trim();
-  const phone=document.getElementById('p_phone').value.trim();
-  if(!name){toast('Name required','error');return;}
-  const users=getUsers();
-  const i=users.findIndex(u=>u.id===currentUser.id);
-  if(i>=0){users[i]={...users[i],name,email,phone};currentUser={...currentUser,name,email,phone};sessionStorage.setItem('hr_session',JSON.stringify(currentUser));}
-  saveUsers(users);toast('Profile saved');renderSidebar();
+function changePwd(){
+  var cur=document.getElementById('pc').value;var nw=document.getElementById('pnw').value;var cf=document.getElementById('pcf').value;
+  var users=getU();var u=users.filter(function(x){return x.id===CU.id;})[0];
+  if(!u||u.password!==cur){toast('Current password incorrect','err');return;}
+  if(nw.length<6){toast('New password must be 6+ characters','err');return;}
+  if(nw!==cf){toast('Passwords do not match','err');return;}
+  var i=users.findIndex(function(x){return x.id===CU.id;});
+  users[i].password=nw;setU(users);toast('Password updated');
 }
-
-function changePassword(){
-  const cur=document.getElementById('p_curpass').value;
-  const nw=document.getElementById('p_newpass').value;
-  const cf=document.getElementById('p_confpass').value;
-  const users=getUsers();
-  const u=users.find(x=>x.id===currentUser.id);
-  if(!u||u.password!==cur){toast('Current password is incorrect','error');return;}
-  if(nw.length<6){toast('New password must be at least 6 characters','error');return;}
-  if(nw!==cf){toast('Passwords do not match','error');return;}
-  const i=users.findIndex(x=>x.id===currentUser.id);
-  users[i].password=nw;saveUsers(users);toast('Password updated');
-}
-
 function printSlip(){
-  const content=document.getElementById('slipContent').innerHTML;
-  const win=window.open('','_blank');
-  win.document.write(`<html><head><title>Salary Slip</title>
-    <style>body{font-family:Arial,sans-serif;margin:32px;color:#111}
-    table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px 12px;text-align:left}
-    th{background:#f8f8f8}
-    </style></head><body>${content}</body></html>`);
-  win.document.close();win.focus();win.print();win.close();
+  var content=document.getElementById('sc').innerHTML;
+  var w=window.open('','_blank');
+  w.document.write('<html><head><title>Salary Slip</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#111}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px 12px;text-align:left}th{background:#f8f8f8}</style></head><body>'+content+'</body></html>');
+  w.document.close();w.focus();w.print();w.close();
 }
 
-// ===================== MODAL =====================
-function openModal(html){
-  document.getElementById('modalInner').innerHTML=html;
-  document.getElementById('modal').style.display='flex';
-}
-function closeModal(){
-  document.getElementById('modal').style.display='none';
-}
-
-// ===================== TOAST =====================
-function toast(msg,type='success'){
-  const el=document.getElementById('toastEl');
-  el.textContent=msg;
-  el.style.background=type==='error'?'#ef4444':'#1e293b';
+// ============ MODAL / TOAST ============
+function openModal(html){document.getElementById('modalBox').innerHTML=html;document.getElementById('modal').style.display='flex';}
+function closeModal(){document.getElementById('modal').style.display='none';}
+var toastTmr=null;
+function toast(msg,type){
+  var el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast '+(type==='err'?'toast-err':'toast-ok');
   el.style.display='block';
-  setTimeout(()=>{el.style.display='none';},3000);
+  if(toastTmr)clearTimeout(toastTmr);
+  toastTmr=setTimeout(function(){el.style.display='none';},3000);
 }
 
-// ===================== BOOT =====================
+// ============ START ============
 init();
 </script>
 </body>
