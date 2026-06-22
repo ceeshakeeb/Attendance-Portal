@@ -95,7 +95,6 @@ tr:hover td{background:#f8fafc;}
   .sidebar{display:none;}
   .main{margin-left:0;}
   .mob-header{display:flex;}
-  .bot-nav{display:flex;}
   .main-pad{padding:16px 16px 76px;}
   .g4{grid-template-columns:1fr 1fr;}
   .g2{grid-template-columns:1fr;}
@@ -135,6 +134,9 @@ tr:hover td{background:#f8fafc;}
     <!-- Mobile header -->
     <div class="mob-header no-print">
       <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="openDrawer()" style="background:none;border:none;padding:4px;cursor:pointer;display:flex;align-items:center">
+          <svg width="22" height="22" fill="none" stroke="#475569" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <div style="width:26px;height:26px;background:#0f766e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:13px">A</div>
         <span style="font-weight:700;font-size:13px">Airdoor HR</span>
       </div>
@@ -185,6 +187,62 @@ tr:hover td{background:#f8fafc;}
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         Profile
       </button>
+    </div>
+  </div>
+
+  <!-- Bottom nav (admin mobile) -->
+  <div class="bot-nav no-print" id="adminBotNav" style="display:none">
+    <div style="display:flex;height:100%">
+      <button class="bot-item" id="abn0" onclick="go('/admin/dash')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dash
+      </button>
+      <button class="bot-item" id="abn1" onclick="go('/admin/att')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Attend
+      </button>
+      <button class="bot-item" id="abn2" onclick="go('/admin/staff')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Staff
+      </button>
+      <button class="bot-item" id="abn3" onclick="go('/admin/salary')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Payroll
+      </button>
+      <button class="bot-item" id="abn4" onclick="openDrawer()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        More
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile drawer overlay -->
+  <div id="drawerOverlay" onclick="closeDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150"></div>
+  <!-- Mobile drawer (slide-in sidebar) -->
+  <div id="mobDrawer" style="position:fixed;top:0;left:0;bottom:0;width:280px;background:#1e293b;z-index:160;transform:translateX(-100%);transition:transform .25s ease;display:flex;flex-direction:column;overflow-y:auto">
+    <div style="padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #334155">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:28px;height:28px;background:#0f766e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px">A</div>
+        <span style="font-weight:700;font-size:13px;color:#e2e8f0">Airdoor HR</span>
+      </div>
+      <button onclick="closeDrawer()" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:4px">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <!-- Drawer user info -->
+    <div id="drawerUser" style="padding:14px 16px;border-bottom:1px solid #334155;font-size:12px;color:#94a3b8"></div>
+    <!-- Drawer nav -->
+    <nav id="drawerNav" style="flex:1;padding:10px 0;overflow-y:auto"></nav>
+    <!-- Drawer footer -->
+    <div style="padding:10px 8px;border-top:1px solid #334155">
+      <div style="position:relative;margin-bottom:4px" id="drawerSwitchWrap">
+        <div class="nav-item" style="justify-content:space-between" onclick="toggleDrawerSwitch()">
+          <span>⇄ Switch Account</span>
+          <span id="drawerSwChev" style="transition:transform .2s">▾</span>
+        </div>
+        <div id="drawerSwitchMenu" style="background:#0f1729;border-radius:8px;margin:2px 4px;overflow:hidden;display:none"></div>
+      </div>
+      <div class="nav-item" onclick="doLogout();closeDrawer()">⎋ Logout</div>
     </div>
   </div>
 </div>
@@ -328,7 +386,7 @@ async function init(){
   renderSwitchMenus();
   updateNBadge();
   var isEmp=CU.role==='employee';
-  document.getElementById('botNav').style.display=isEmp?'flex':'none';
+  document.getElementById('botNav').style.display=isEmp?'flex':'none';document.getElementById('adminBotNav').style.display=(!isEmp)?'flex':'none';
   go(CU.role==='admin'?'/admin/dash':'/dashboard');
 }
 
@@ -339,7 +397,7 @@ function doLogout(){
   renderSidebar();
   renderSwitchMenus();
   updateNBadge();
-  document.getElementById('botNav').style.display='none';
+  document.getElementById('botNav').style.display='none';document.getElementById('adminBotNav').style.display='flex';
   go('/admin/dash');
   toast('Switched to Admin');
 }
@@ -353,7 +411,7 @@ function switchTo(uid){
   renderSidebar();
   renderSwitchMenus();
   updateNBadge();
-  document.getElementById('botNav').style.display=u.role==='employee'?'flex':'none';
+  document.getElementById('botNav').style.display=u.role==='employee'?'flex':'none';document.getElementById('adminBotNav').style.display=u.role==='admin'?'flex':'none';
   go(u.role==='admin'?'/admin/dash':'/dashboard');
   toast('Switched to '+u.name);
 }
@@ -391,10 +449,18 @@ var ICO={
 
 function renderSidebar(){
   var nav=CU.role==='admin'?ANAV:ENAV;
-  document.getElementById('sideNav').innerHTML=nav.map(function(n){
+  var navHtml=nav.map(function(n){
     return '<div class="nav-item'+(CP===n.p?' active':'')+'" onclick="go(\''+n.p+'\')">'+(ICO[n.i]||'')+' '+n.l+'</div>';
   }).join('');
+  document.getElementById('sideNav').innerHTML=navHtml;
   document.getElementById('sideUser').innerHTML='<div style="font-weight:600;color:#e2e8f0;font-size:12px">'+CU.name+'</div><div style="font-size:11px;text-transform:capitalize">'+CU.role+'</div>';
+  // Drawer
+  var dn=document.getElementById('drawerNav');
+  if(dn)dn.innerHTML=nav.map(function(n){
+    return '<div class="nav-item'+(CP===n.p?' active':'')+'" onclick="go(\''+n.p+'\');closeDrawer()">'+(ICO[n.i]||'')+' '+n.l+'</div>';
+  }).join('');
+  var du=document.getElementById('drawerUser');
+  if(du)du.innerHTML='<div style="font-weight:600;color:#e2e8f0;font-size:13px">'+CU.name+'</div><div style="font-size:11px;text-transform:capitalize;margin-top:2px">'+CU.role+'</div>';
 }
 
 function renderSwitchMenus(){
@@ -409,8 +475,15 @@ function renderSwitchMenus(){
       +'<div style="width:26px;height:26px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;flex-shrink:0">'+u.name.charAt(0)+'</div>'
       +'<div><div style="font-weight:600">'+u.name+'</div><div style="font-size:10px;color:#64748b;text-transform:capitalize">'+u.role+'</div></div></div>';
   }).join('');
+  var drawerHtml=others.map(function(u){
+    return '<div onclick="switchTo('+u.id+');closeDrawer()" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;color:#94a3b8;font-size:12px" onmouseover="this.style.background=\'#1e293b\'" onmouseout="this.style.background=\'\'">'
+      +'<div style="width:22px;height:22px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;flex-shrink:0">'+u.name.charAt(0)+'</div>'
+      +'<div><div style="font-weight:500;color:#e2e8f0">'+u.name+'</div><div style="font-size:10px;text-transform:capitalize">'+u.role+'</div></div></div>';
+  }).join('');
   document.getElementById('switchMenu').innerHTML=sideHtml;
   document.getElementById('mobSwitchMenu').innerHTML=mobHtml;
+  var dsm=document.getElementById('drawerSwitchMenu');
+  if(dsm)dsm.innerHTML=drawerHtml;
 }
 
 var swOpen=false;
@@ -429,6 +502,25 @@ function closeAll(){
   document.getElementById('swChev').style.transform='';
   document.getElementById('notifPanel').style.display='none';
   document.getElementById('mobSwitchMenu').style.display='none';
+}
+var drawerSwOpen=false;
+function toggleDrawerSwitch(){
+  drawerSwOpen=!drawerSwOpen;
+  document.getElementById('drawerSwitchMenu').style.display=drawerSwOpen?'block':'none';
+  document.getElementById('drawerSwChev').style.transform=drawerSwOpen?'rotate(180deg)':'';
+}
+function openDrawer(){
+  document.getElementById('mobDrawer').style.transform='translateX(0)';
+  document.getElementById('drawerOverlay').style.display='block';
+}
+function closeDrawer(){
+  document.getElementById('mobDrawer').style.transform='translateX(-100%)';
+  document.getElementById('drawerOverlay').style.display='none';
+  drawerSwOpen=false;
+  var dsm=document.getElementById('drawerSwitchMenu');
+  if(dsm)dsm.style.display='none';
+  var dc=document.getElementById('drawerSwChev');
+  if(dc)dc.style.transform='';
 }
 document.addEventListener('click',function(e){
   if(!e.target.closest('#switchWrap'))closeAll();
@@ -517,6 +609,11 @@ function updateBotNav(){
   ['bn0','bn1','bn2','bn3','bn4'].forEach(function(id){
     var el=document.getElementById(id);
     if(el)el.classList.toggle('active',mp[CP]===id);
+  });
+  var amp={'/admin/dash':'abn0','/admin/att':'abn1','/admin/staff':'abn2','/admin/salary':'abn3'};
+  ['abn0','abn1','abn2','abn3','abn4'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.classList.toggle('active',amp[CP]===id);
   });
 }
 
