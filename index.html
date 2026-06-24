@@ -424,7 +424,10 @@ function launchApp(){
   var isEmp=CU.role==='employee';
   document.getElementById('botNav').style.display=isEmp?'flex':'none';
   document.getElementById('adminBotNav').style.display=(!isEmp)?'flex':'none';
-  go(CU.role==='admin'?'/admin/dash':'/dashboard');
+  var target=CU.role==='admin'?'/admin/dash':'/dashboard';
+  go(target);
+  // Re-render after short delay to ensure DOM is settled (fixes blank-on-first-load)
+  setTimeout(function(){ if(CP===target) go(target); }, 150);
   scheduleDailyNotif();
 }
 
@@ -855,8 +858,13 @@ function submitDayAtt(ds){
   var tout=document.getElementById('day_tout')?document.getElementById('day_tout').value:'18:00';
   if(!tin||!tout){toast('Time required','err');return;}
   var att=getA();
-  if(att.filter(function(a){return a.userId===CU.id&&a.date===ds;}).length){toast('Already submitted for this date','err');return;}
-  att.push({id:nid(att),userId:CU.id,date:ds,type:type,timeIn:tin,timeOut:tout,notes:note,status:'pending',createdAt:new Date().toISOString()});
+  var existingCalIdx=att.findIndex(function(a){return a.userId===CU.id&&a.date===ds;});
+  if(existingCalIdx>=0){
+    if(att[existingCalIdx].status!=='rejected'){toast('Already submitted for this date','err');return;}
+    att[existingCalIdx]={id:att[existingCalIdx].id,userId:CU.id,date:ds,type:type,timeIn:tin,timeOut:tout,notes:note,status:'pending',createdAt:new Date().toISOString()};
+  } else {
+    att.push({id:nid(att),userId:CU.id,date:ds,type:type,timeIn:tin,timeOut:tout,notes:note,status:'pending',createdAt:new Date().toISOString()});
+  }
   setA(att);closeModal();renderCal();toast('Attendance submitted!');
   if(CP==='/dashboard')go('/dashboard');
 }
@@ -1378,7 +1386,8 @@ function pgAttSubmit(){
     +'<div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Log Attendance</h1><p style="color:#64748b;font-size:13px">Mark your attendance for a specific date.</p></div>'
     +((isSun||isHol)?'<div style="padding:10px 14px;background:#f3e8ff;border:1px solid #d8b4fe;border-radius:10px;font-size:12px;color:#7e22ce;margin-bottom:14px">&#9889; '+(isHol?holName+' is a holiday.':'Sunday.')+' Logging earns a Comp Off when approved.</div>':'')
     +'<div class="card">'
-    +(existing?'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#166534">Already submitted &mdash; <strong>'+existing.type.replace(/_/g,' ')+'</strong> ['+existing.status+']</div>':'')
+    +(existing&&existing.status!=='rejected'?'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#166534">Already submitted &mdash; <strong>'+existing.type.replace(/_ /g,' ')+'</strong> ['+existing.status+']</div>':'')
+    +(existing&&existing.status==='rejected'?'<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#991b1b">&#10008; Your previous submission was <strong>rejected</strong>. You may resubmit below.</div>':'')
     +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" type="date" id="ad" value="'+t+'" max="'+t+'"/></div>'
     +'<div style="margin-bottom:10px"><label class="label">Type</label><select class="input" id="at"><option value="present"'+((!isSun&&!isHol)?'':'')+'>Present</option><option value="absent">Absent</option><option value="half_day">Half Day</option><option value="sunday_work"'+(isSun?' selected':'')+'>Sunday Work (Comp Off)</option><option value="holiday_work"'+(isHol?' selected':'')+'>Holiday Work (Comp Off)</option></select></div>'
     +'<div style="margin-bottom:10px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div><label class="label">Check-in Time</label><input class="input" type="time" id="a_tin" value="09:00"/></div><div><label class="label">Check-out Time</label><input class="input" type="time" id="a_tout" value="18:00"/></div></div><label class="label">Work Details / Remarks</label><textarea class="input" id="an" rows="2" placeholder="Work details or remarks..."></textarea></div>'
@@ -1394,8 +1403,14 @@ function submitAtt(){
   if(!date){toast('Select a date','err');return;}
   if(!tin||!tout){toast('Check-in and check-out time required','err');return;}
   var att=getA();
-  if(att.filter(function(a){return a.userId===CU.id&&a.date===date;}).length){toast('Already submitted for this date','err');return;}
-  att.push({id:nid(att),userId:CU.id,date:date,type:type,timeIn:tin,timeOut:tout,notes:notes,status:'pending',createdAt:new Date().toISOString()});
+  var existingIdx=att.findIndex(function(a){return a.userId===CU.id&&a.date===date;});
+  if(existingIdx>=0){
+    if(att[existingIdx].status!=='rejected'){toast('Already submitted for this date','err');return;}
+    // Replace rejected record with new submission
+    att[existingIdx]={id:att[existingIdx].id,userId:CU.id,date:date,type:type,timeIn:tin,timeOut:tout,notes:notes,status:'pending',createdAt:new Date().toISOString()};
+  } else {
+    att.push({id:nid(att),userId:CU.id,date:date,type:type,timeIn:tin,timeOut:tout,notes:notes,status:'pending',createdAt:new Date().toISOString()});
+  }
   setA(att);go('/att/history');toast('Attendance submitted!');
 }
 
