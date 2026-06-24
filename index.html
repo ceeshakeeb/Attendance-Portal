@@ -310,7 +310,7 @@ window._fsSave = function(k, v){
 <script>
 // ============ DATA ============
 var DB={
-  USERS:'hr_u', ATT:'hr_a', LEAVE:'hr_l', HOL:'hr_h', SAL:'hr_s', NOTIF:'hr_n', VOUCHER:'hr_v', PURCHASE:'hr_pi'
+  USERS:'hr_u', ATT:'hr_a', LEAVE:'hr_l', HOL:'hr_h', SAL:'hr_s', NOTIF:'hr_n', VOUCHER:'hr_v', PURCHASE:'hr_pi', ADVANCE:'hr_adv'
 };
 var SEED_USERS=[
   {id:1,username:'admin',password:'admin123',name:'Admin User',role:'admin',email:'admin@airdoor.com',phone:'',designation:'HR Manager',department:'HR',monthlySalary:0,isActive:true},
@@ -358,6 +358,8 @@ function getL(){return ls(DB.LEAVE,[]);}
 function setL(v){lss(DB.LEAVE,v);}
 function getV(){return ls(DB.VOUCHER,[]);}
 function setV(v){lss(DB.VOUCHER,v);}
+function getADV(){return ls(DB.ADVANCE,[]);}
+function setADV(v){lss(DB.ADVANCE,v);}
 function getPI(){return ls(DB.PURCHASE,[]);}
 function setPI(v){lss(DB.PURCHASE,v);}
 function getH(){return ls(DB.HOL,SEED_HOL);}
@@ -463,6 +465,7 @@ var ANAV=[
   {l:'Manage Attendance',i:'cal',p:'/admin/att'},
   {l:'Manage Leaves',i:'file',p:'/admin/leave'},
   {l:'Vouchers',i:'voucher',p:'/admin/voucher'},
+  {l:'Advances',i:'dollar',p:'/admin/advance'},
   {l:'Purchase Invoices',i:'invoice',p:'/admin/purchase'},
   {l:'Staff Directory',i:'users',p:'/admin/staff'},
   {l:'Payroll',i:'dollar',p:'/admin/salary'},
@@ -639,6 +642,7 @@ var ROUTES={
   '/admin/att':pgAdminAtt,
   '/admin/leave':pgAdminLeave,
   '/admin/voucher':pgAdminVoucher,
+  '/admin/advance':pgAdminAdvance,
   '/admin/purchase':pgAdminPurchase,
   '/admin/staff':pgAdminStaff,
   '/admin/salary':pgAdminSalary,
@@ -980,6 +984,33 @@ function rejectAtt(id){
   pushNotif(r.userId,'Attendance Rejected','Your attendance for '+fd(r.date)+' ('+r.type.replace(/_/g,' ')+') was rejected.','error');
   go(CP);toast('Attendance rejected');
 }
+function editAttModal(id){
+  var att=getA().filter(function(a){return a.id===id;})[0];
+  if(!att)return;
+  var html='<div><h3 style="font-weight:600;margin-bottom:14px">Edit Attendance</h3>'
+    +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" id="eatt_date" type="date" value="'+att.date+'"/></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Type</label><select class="input" id="eatt_type"><option value="present"'+(att.type==='present'?' selected':'')+'>Present</option><option value="absent"'+(att.type==='absent'?' selected':'')+'>Absent</option><option value="half_day"'+(att.type==='half_day'?' selected':'')+'>Half Day</option><option value="sunday_work"'+(att.type==='sunday_work'?' selected':'')+'>Sunday Work</option><option value="holiday_work"'+(att.type==='holiday_work'?' selected':'')+'>Holiday Work</option><option value="leave"'+(att.type==='leave'?' selected':'')+'>Leave</option></select></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Time In</label><input class="input" id="eatt_tin" type="time" value="'+(att.timeIn||'')+'" placeholder="HH:MM"/></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Time Out</label><input class="input" id="eatt_tout" type="time" value="'+(att.timeOut||'')+'" placeholder="HH:MM"/></div>'
+    +'<div style="margin-bottom:14px"><label class="label">Notes</label><textarea class="input" id="eatt_notes" rows="2" placeholder="Optional notes">'+(att.notes||'')+'</textarea></div>'
+    +'<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="saveAttEdit('+id+')">Save Changes</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div></div>';
+  openModal(html);
+}
+function saveAttEdit(id){
+  var att=getA();var i=att.findIndex(function(a){return a.id===id;});
+  if(i<0)return;
+  att[i].date=document.getElementById('eatt_date').value;
+  att[i].type=document.getElementById('eatt_type').value;
+  att[i].timeIn=document.getElementById('eatt_tin').value||null;
+  att[i].timeOut=document.getElementById('eatt_tout').value||null;
+  att[i].notes=document.getElementById('eatt_notes').value||null;
+  setA(att);closeModal();go(CP);toast('Attendance updated');
+}
+function deleteAtt(id){
+  if(!confirm('Delete this attendance record? This cannot be undone.'))return;
+  var att=getA().filter(function(a){return a.id!==id;});
+  setA(att);go(CP);toast('Attendance deleted');
+}
 
 // ============ ADMIN LEAVES ============
 function pgAdminLeave(){
@@ -1036,21 +1067,24 @@ function pgAdminVoucher(){
     +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">PENDING REVIEW</div><div style="font-size:22px;font-weight:700;color:#d97706">'+ru(pendingAmt)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">'+(rejectedCount>0?rejectedCount+' rejected':'Awaiting approval')+'</div></div>'
     +'</div>'
     +'<div class="card"><div style="overflow-x:auto"><table>'
-    +'<thead><tr><th>Employee</th><th>Voucher #</th><th>Category</th><th>Date</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
-    +(vouchers.length===0?'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted</td></tr>':
+    +'<thead><tr><th>Employee</th><th>Voucher #</th><th>Category</th><th>Date</th><th>Amount</th><th>Balance to Pay</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
+    +(vouchers.length===0?'<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted</td></tr>':
     vouchers.map(function(v){
       var u=users.filter(function(x){return x.id===v.userId;})[0];
+      var advTotal=getADV().filter(function(a){return a.userId===v.userId;}).reduce(function(s,a){return s+Number(a.amount);},0);
+      var balance=Math.max(0,Number(v.amount)-advTotal);
       return '<tr>'
         +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div></td>'
         +'<td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td>'
         +'<td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td>'
         +'<td style="font-weight:600">'+ru(v.amount)+'</td>'
+        +'<td style="font-weight:600;color:'+(balance>0?'#0f766e':'#64748b')+'">'+ru(balance)+(advTotal>0?' <span style="font-size:11px;color:#94a3b8">(-'+ru(advTotal)+')</span>':'')+'</td>'
         +'<td>'+badge(v.status)+'</td>'
         +'<td>'+(v.status==='pending'
           ?'<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveVoucher('+v.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectVoucher('+v.id+')">Reject</button>'
           :v.status==='approved'
-          ?'<button class="btn btn-p btn-sm" onclick="markVoucherPaid('+v.id+')">Mark Paid</button>'
-          :'<span style="color:#94a3b8;font-size:12px">'+v.status+'</span>')+'</td></tr>';
+          ?'<button class="btn btn-p btn-sm" style="margin-right:4px" onclick="markVoucherPaid('+v.id+')">Mark Paid</button><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteVoucher('+v.id+')">Delete</button>'
+          :'<button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteVoucher('+v.id+')">Delete</button>')+'</td></tr>';
     }).join(''))
     +'</tbody></table></div></div></div>';
 }
@@ -1075,6 +1109,60 @@ function markVoucherPaid(id){
   pushNotif(r.userId,'Voucher Paid','Your voucher '+r.voucherNo+' for '+ru(r.amount)+' has been paid.','success');
   go(CP);toast('Voucher marked as paid');
 }
+function editVoucherModal(id){
+  var v=getV().filter(function(x){return x.id===id;})[0];
+  if(!v)return;
+  var html='<div><h3 style="font-weight:600;margin-bottom:14px">Edit Voucher</h3>'
+    +'<div style="margin-bottom:10px"><label class="label">Voucher Number</label><input class="input" id="ev_vno" value="'+v.voucherNo+'"/></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Category</label><select class="input" id="ev_cat"><option value="cash_voucher"'+(v.category==='cash_voucher'?' selected':'')+'>Cash Voucher</option><option value="project_expense"'+(v.category==='project_expense'?' selected':'')+'>Project Expense</option><option value="travel_expense"'+(v.category==='travel_expense'?' selected':'')+'>Travel Expense</option></select></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" id="ev_date" type="date" value="'+v.date+'"/></div>'
+    +'<div style="margin-bottom:14px"><label class="label">Amount (₹)</label><input class="input" type="number" id="ev_amt" min="0" step="0.01" value="'+v.amount+'"/></div>'
+    +'<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="saveVoucherEdit('+id+')">Save Changes</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div></div>';
+  openModal(html);
+}
+function saveVoucherEdit(id){
+  var vno=document.getElementById('ev_vno').value.trim();
+  var cat=document.getElementById('ev_cat').value;
+  var date=document.getElementById('ev_date').value;
+  var amt=Number(document.getElementById('ev_amt').value);
+  if(!vno||!date||!amt||amt<=0){toast('All fields required','err');return;}
+  var vouchers=getV();var i=vouchers.findIndex(function(v){return v.id===id;});
+  if(i<0)return;
+  vouchers[i].voucherNo=vno;vouchers[i].category=cat;vouchers[i].date=date;vouchers[i].amount=amt;
+  setV(vouchers);closeModal();go(CP);toast('Voucher updated');
+}
+function deleteVoucher(id){
+  if(!confirm('Delete this voucher? This cannot be undone.'))return;
+  var vouchers=getV().filter(function(v){return v.id!==id;});
+  setV(vouchers);go(CP);toast('Voucher deleted');
+}
+function editEmpVoucherModal(id){
+  var v=getV().filter(function(x){return x.id===id;})[0];
+  if(!v||v.status!=='pending')return;
+  var html='<div><h3 style="font-weight:600;margin-bottom:14px">Edit Voucher</h3>'
+    +'<div style="margin-bottom:10px"><label class="label">Voucher Number</label><input class="input" id="eev_vno" value="'+v.voucherNo+'"/></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Category</label><select class="input" id="eev_cat"><option value="cash_voucher"'+(v.category==='cash_voucher'?' selected':'')+'>Cash Voucher</option><option value="project_expense"'+(v.category==='project_expense'?' selected':'')+'>Project Expense</option><option value="travel_expense"'+(v.category==='travel_expense'?' selected':'')+'>Travel Expense</option></select></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" id="eev_date" type="date" value="'+v.date+'" max="'+td()+'"/></div>'
+    +'<div style="margin-bottom:14px"><label class="label">Amount (₹)</label><input class="input" type="number" id="eev_amt" min="0" step="0.01" value="'+v.amount+'"/></div>'
+    +'<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="saveEmpVoucherEdit('+id+')">Save Changes</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div></div>';
+  openModal(html);
+}
+function saveEmpVoucherEdit(id){
+  var vno=document.getElementById('eev_vno').value.trim();
+  var cat=document.getElementById('eev_cat').value;
+  var date=document.getElementById('eev_date').value;
+  var amt=Number(document.getElementById('eev_amt').value);
+  if(!vno||!date||!amt||amt<=0){toast('All fields required','err');return;}
+  var vouchers=getV();var i=vouchers.findIndex(function(v){return v.id===id;});
+  if(i<0)return;
+  vouchers[i].voucherNo=vno;vouchers[i].category=cat;vouchers[i].date=date;vouchers[i].amount=amt;
+  setV(vouchers);closeModal();go(CP);toast('Voucher updated');
+}
+function deleteEmpVoucher(id){
+  if(!confirm('Delete this voucher? This cannot be undone.'))return;
+  var vouchers=getV().filter(function(v){return v.id!==id;});
+  setV(vouchers);go(CP);toast('Voucher deleted');
+}
 
 // ============ ADMIN PURCHASE INVOICES ============
 function pgAdminPurchase(){
@@ -1082,7 +1170,7 @@ function pgAdminPurchase(){
   var users=getU();
   return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Purchase Invoices</h1><p style="color:#64748b;font-size:13px">Purchase invoices uploaded by employees, with project remarks.</p></div>'
     +'<div class="card"><div style="overflow-x:auto"><table>'
-    +'<thead><tr><th>Employee</th><th>Date</th><th>Project / Remarks</th><th>File</th><th>Invoice</th></tr></thead><tbody>'
+    +'<thead><tr><th>Employee</th><th>Date</th><th>Project / Remarks</th><th>File</th><th>Actions</th></tr></thead><tbody>'
     +(invs.length===0?'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:32px">No purchase invoices uploaded yet</td></tr>':
     invs.map(function(p){
       var u=users.filter(function(x){return x.id===p.userId;})[0];
@@ -1091,10 +1179,34 @@ function pgAdminPurchase(){
         +'<td>'+fd(p.date)+'</td>'
         +'<td style="max-width:220px;font-size:12px;color:#475569">'+p.remarks+'</td>'
         +'<td style="font-size:11px;color:#64748b">'+p.fileName+'</td>'
-        +'<td><a href="'+p.fileData+'" download="'+p.fileName+'" class="btn btn-o btn-sm">View / Download</a></td>'
+        +'<td><a href="'+p.fileData+'" download="'+p.fileName+'" class="btn btn-o btn-sm">View</a></td>'
+        +'<td><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editPurchaseModal('+p.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deletePurchase('+p.id+')">Delete</button></td>'
         +'</tr>';
     }).join(''))
     +'</tbody></table></div></div></div>';
+}
+function editPurchaseModal(id){
+  var p=getPI().filter(function(x){return x.id===id;})[0];
+  if(!p)return;
+  var html='<div><h3 style="font-weight:600;margin-bottom:14px">Edit Purchase Invoice</h3>'
+    +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" id="ep_date" type="date" value="'+p.date+'"/></div>'
+    +'<div style="margin-bottom:14px"><label class="label">Project / Remarks</label><textarea class="input" id="ep_remarks" rows="3" placeholder="e.g. Office renovation project — bought cement and tiles">'+p.remarks+'</textarea></div>'
+    +'<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="savePurchaseEdit('+id+')">Save Changes</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div></div>';
+  openModal(html);
+}
+function savePurchaseEdit(id){
+  var date=document.getElementById('ep_date').value;
+  var remarks=document.getElementById('ep_remarks').value.trim();
+  if(!date||!remarks){toast('All fields required','err');return;}
+  var invs=getPI();var i=invs.findIndex(function(p){return p.id===id;});
+  if(i<0)return;
+  invs[i].date=date;invs[i].remarks=remarks;
+  setPI(invs);closeModal();go(CP);toast('Invoice updated');
+}
+function deletePurchase(id){
+  if(!confirm('Delete this purchase invoice? This cannot be undone.'))return;
+  var invs=getPI().filter(function(p){return p.id!==id;});
+  setPI(invs);go(CP);toast('Invoice deleted');
 }
 
 // ============ ADMIN STAFF ============
@@ -1478,6 +1590,8 @@ function pgVoucher(){
   var submitted=vouchers.reduce(function(s,v){return s+Number(v.amount);},0);
   var paid=vouchers.filter(function(v){return v.status==='paid';}).reduce(function(s,v){return s+Number(v.amount);},0);
   var pending=vouchers.filter(function(v){return v.status==='pending'||v.status==='approved';}).reduce(function(s,v){return s+Number(v.amount);},0);
+  var advGiven=getADV().filter(function(a){return a.userId===CU.id;}).reduce(function(s,a){return s+Number(a.amount);},0);
+  var balAfterAdv=submitted-advGiven;
   return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Vouchers</h1><p style="color:#64748b;font-size:13px">Submit expense vouchers and track their approval.</p></div>'
     +'<div class="g2" style="margin-bottom:16px">'
     +'<div class="card">'
@@ -1496,13 +1610,19 @@ function pgVoucher(){
     +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:8px"><span style="font-size:12px;color:#64748b">Total Submitted</span><strong>'+ru(submitted)+'</strong></div>'
     +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f0fdf4;border-radius:8px"><span style="font-size:12px;color:#166534">Paid</span><strong style="color:#16a34a">'+ru(paid)+'</strong></div>'
     +'<div style="display:flex;justify-content:space-between;padding:10px;background:#fff7ed;border-radius:8px"><span style="font-size:12px;color:#92400e">Pending / Awaiting Payment</span><strong style="color:#d97706">'+ru(pending)+'</strong></div>'
+    +(advGiven>0?'<div style="display:flex;justify-content:space-between;padding:10px;background:#e0f2fe;border-radius:8px"><span style="font-size:12px;color:#0369a1">Advances Given</span><strong style="color:#0284c7">-'+ru(advGiven)+'</strong></div>':'')
+    +(advGiven>0?'<div style="display:flex;justify-content:space-between;padding:10px;background:#faf5ff;border-radius:8px;border-top:1px solid #ddd6fe"><span style="font-size:12px;color:#6b21a8">Net Payable</span><strong style="color:#7e22ce">'+ru(Math.max(0,balAfterAdv))+'</strong></div>':'')
     +'</div></div>'
     +'</div>'
     +'<div class="card"><div style="overflow-x:auto"><table>'
-    +'<thead><tr><th>Voucher #</th><th>Category</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead><tbody>'
-    +(vouchers.length===0?'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted yet</td></tr>':
+    +'<thead><tr><th>Voucher #</th><th>Category</th><th>Date</th><th>Amount</th>'+(advGiven>0?'<th>Balance After Advance</th>':'')+'<th>Status</th><th>Actions</th></tr></thead><tbody>'
+    +(vouchers.length===0?'<tr><td colspan="'+(advGiven>0?7:6)+'" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted yet</td></tr>':
     vouchers.map(function(v){
-      return '<tr><td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td><td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td><td style="font-weight:600">'+ru(v.amount)+'</td><td>'+badge(v.status)+'</td></tr>';
+      var balance=Math.max(0,Number(v.amount)-advGiven);
+      return '<tr><td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td><td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td><td style="font-weight:600">'+ru(v.amount)+'</td>'
+        +(advGiven>0?'<td style="font-weight:600;color:#0284c7">'+ru(balance)+'</td>':'')
+        +'<td>'+badge(v.status)+'</td>'
+        +'<td>'+(v.status==='pending'?'<button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editEmpVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteEmpVoucher('+v.id+')">Delete</button>':'')+'</td></tr>';
     }).join(''))
     +'</tbody></table></div></div></div>';
 }
@@ -1518,6 +1638,85 @@ function submitVoucher(){
   var admins=getU().filter(function(u){return u.role==='admin';});
   admins.forEach(function(a){pushNotif(a.id,'New Voucher Submitted',CU.name+' submitted voucher '+vno+' ('+ru(amt)+') for approval.','info');});
   go('/voucher');toast('Voucher submitted!');
+}
+
+// ============ ADVANCES (ADMIN) ============
+function pgAdminAdvance(){
+  var advances=getADV().slice().reverse();
+  var totalAdv=advances.reduce(function(s,a){return s+Number(a.amount);},0);
+  var usedAdv=advances.filter(function(a){return a.used===true;}).reduce(function(s,a){return s+Number(a.amount);},0);
+  var availAdv=totalAdv-usedAdv;
+  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Employee Advances</h1><p style="color:#64748b;font-size:13px">Give advances to employees, deducted from voucher payments.</p></div>'+
+    '<div class="g4" style="margin-bottom:20px">'+
+    '<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">TOTAL ADVANCES</div><div style="font-size:22px;font-weight:700">'+ru(totalAdv)+'</div></div>'+
+    '<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">USED/DEDUCTED</div><div style="font-size:22px;font-weight:700">'+ru(usedAdv)+'</div></div>'+
+    '<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">AVAILABLE</div><div style="font-size:22px;font-weight:700">'+ru(availAdv)+'</div></div>'+
+    '<div class="stat-card"><button class="btn btn-p" onclick="giveAdvanceModal()" style="width:100%;justify-content:center">+ Give Advance</button></div>'+
+    '</div>'+
+    '<div class="card" style="overflow-x:auto"><table>'+
+    '<thead><tr><th>Employee</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  for(var i=0;i<advances.length;i++){
+    var a=advances[i];var u=getU().find(function(x){return x.id===a.userId;});
+    var usedBg=a.used?'bg-teal':'bg-blue';var usedLbl=a.used?'Deducted':'Available';
+    return html+='<tr><td>'+u.name+'</td><td>'+ru(a.amount)+'</td><td>'+fmt(a.date)+'</td><td><span class="badge '+usedBg+'">'+usedLbl+'</span></td><td><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editAdvanceModal('+a.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteAdvance('+a.id+')">Delete</button></td></tr>';
+  }
+  return html+'</tbody></table></div></div>';
+}
+
+function giveAdvanceModal(){
+  var emps=getU().filter(function(u){return u.role==='employee' && u.isActive;});
+  var html='<div><h3 style="font-weight:600;margin-bottom:14px">Give Advance to Employee</h3>'+
+    '<div style="margin-bottom:12px"><label class="label">Employee</label><select class="input" id="emp_adv" style="padding:8px 12px">'+
+    '<option value="">-- Select Employee --</option>';
+  emps.forEach(function(e){html+='<option value="'+e.id+'">'+e.name+' ('+e.designation+')</option>';});
+  html+='</select></div>'+
+    '<div style="margin-bottom:12px"><label class="label">Amount ('+String.fromCharCode(8377)+')</label><input class="input" type="number" id="adv_amt" placeholder="Enter amount" min="0" step="1"/></div>'+
+    '<div style="margin-bottom:12px"><label class="label">Date</label><input class="input" type="date" id="adv_date" value="'+new Date().toISOString().split('T')[0]+'"/></div>'+
+    '<div style="margin-bottom:14px"><label class="label">Remarks</label><textarea class="input" id="adv_rem" placeholder="Optional remarks" style="min-height:60px"></textarea></div>'+
+    '<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="saveAdvance()">Give Advance</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div></div>';
+  openModal(html);
+}
+
+function saveAdvance(){
+  var empId=Number(document.getElementById('emp_adv').value);
+  var amt=Number(document.getElementById('adv_amt').value);
+  var date=document.getElementById('adv_date').value;
+  var rem=document.getElementById('adv_rem').value.trim();
+  if(!empId||!amt||amt<=0||!date){toast('All fields required','err');return;}
+  var advances=getADV();
+  advances.push({id:nid(advances),userId:empId,amount:amt,date:date,remarks:rem,used:false,createdAt:new Date().toISOString()});
+  setADV(advances);
+  var emp=getU().find(function(u){return u.id===empId;});
+  pushNotif(empId,'Advance Given',emp.name+', you have been given an advance of '+ru(amt)+'. This will be deducted from your next voucher payment.','info');
+  closeModal();go(CP);toast('Advance given!');
+}
+
+function editAdvanceModal(id){
+  var advances=getADV();var i=advances.findIndex(function(a){return a.id===id;});
+  if(i<0)return;var a=advances[i];
+  var html='<div><h3 style="font-weight:600;margin-bottom:14px">Edit Advance</h3>'+
+    '<div style="margin-bottom:12px"><label class="label">Amount ('+String.fromCharCode(8377)+')</label><input class="input" type="number" id="adv_amt_e" value="'+a.amount+'" min="0" step="1"/></div>'+
+    '<div style="margin-bottom:12px"><label class="label">Date</label><input class="input" type="date" id="adv_date_e" value="'+a.date+'"/></div>'+
+    '<div style="margin-bottom:14px"><label class="label">Remarks</label><textarea class="input" id="adv_rem_e" style="min-height:60px">'+a.remarks+'</textarea></div>'+
+    '<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="saveAdvanceEdit('+id+')">Save Changes</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div></div>';
+  openModal(html);
+}
+
+function saveAdvanceEdit(id){
+  var advances=getADV();var i=advances.findIndex(function(a){return a.id===id;});
+  if(i<0)return;
+  var amt=Number(document.getElementById('adv_amt_e').value);
+  var date=document.getElementById('adv_date_e').value;
+  var rem=document.getElementById('adv_rem_e').value.trim();
+  if(!amt||amt<=0||!date){toast('All fields required','err');return;}
+  advances[i].amount=amt;advances[i].date=date;advances[i].remarks=rem;
+  setADV(advances);closeModal();go(CP);toast('Advance updated');
+}
+
+function deleteAdvance(id){
+  if(!confirm('Delete this advance? This cannot be undone.'))return;
+  var advances=getADV().filter(function(a){return a.id!==id;});
+  setADV(advances);go(CP);toast('Advance deleted');
 }
 
 // ============ PURCHASE INVOICE (EMPLOYEE) ============
