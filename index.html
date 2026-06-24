@@ -370,7 +370,7 @@ function ago(iso){var d=Date.now()-new Date(iso).getTime(),m=Math.floor(d/60000)
 
 // ============ STATE ============
 var CU=null; // current user
-var CP='';   // current path
+var CP='/dashboard';   // current path - init to dashboard
 var calM={y:new Date().getFullYear(),m:new Date().getMonth()+1};
 
 // ============ INIT ============
@@ -500,6 +500,14 @@ function renderSidebar(){
 }
 
 function renderSwitchMenus(){
+  // Only admins can switch users
+  if(CU.role!=='admin'){
+    document.getElementById('switchMenu').innerHTML='';
+    document.getElementById('mobSwitchMenu').innerHTML='';
+    var dsm=document.getElementById('drawerSwitchMenu');
+    if(dsm)dsm.innerHTML='';
+    return;
+  }
   var others=getU().filter(function(u){return u.isActive&&u.id!==CU.id;});
   var sideHtml=others.map(function(u){
     return '<div onclick="switchTo('+u.id+')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;color:#94a3b8;font-size:12px" onmouseover="this.style.background=\'#1e293b\'" onmouseout="this.style.background=\'\'">'
@@ -738,12 +746,12 @@ function renderCal(){
       else if(isHol)cls+=' cal-holiday';
       else cls+=' cal-future';
     } else if(isToday){
-      if(isSun)cls+=' cal-sun';
-      else if(isHol)cls+=' cal-holiday';
+      if(isSun){cls+=' cal-sun';canClick=true;}
+      else if(isHol){cls+=' cal-holiday';canClick=true;}
       else{cls+=' cal-today-log';canClick=true;}
     } else {
-      if(isSun)cls+=' cal-sun';
-      else if(isHol)cls+=' cal-holiday';
+      if(isSun){cls+=' cal-sun';canClick=true;}
+      else if(isHol){cls+=' cal-holiday';canClick=true;}
       else{cls+=' cal-miss';canClick=true;}
     }
     if(canClick)clickable=' onclick="openDay(\''+ds+'\')"';
