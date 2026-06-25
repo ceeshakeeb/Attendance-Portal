@@ -310,7 +310,7 @@ window._fsSave = function(k, v){
 <script>
 // ============ DATA ============
 var DB={
-  USERS:'hr_u', ATT:'hr_a', LEAVE:'hr_l', HOL:'hr_h', SAL:'hr_s', NOTIF:'hr_n', VOUCHER:'hr_v', PURCHASE:'hr_pi', ADVANCE:'hr_adv'
+  USERS:'hr_u', ATT:'hr_a', LEAVE:'hr_l', HOL:'hr_h', SAL:'hr_s', NOTIF:'hr_n', VOUCHER:'hr_v', PURCHASE:'hr_pi', ADVANCE:'hr_adv', WORK:'hr_work'
 };
 var SEED_USERS=[
   {id:1,username:'admin',password:'admin123',name:'Admin User',role:'admin',email:'admin@airdoor.com',phone:'',designation:'HR Manager',department:'HR',monthlySalary:0,isActive:true},
@@ -366,6 +366,8 @@ function getH(){return ls(DB.HOL,SEED_HOL);}
 function setH(v){lss(DB.HOL,v);}
 function getS(){return ls(DB.SAL,[]);}
 function setS(v){lss(DB.SAL,v);}
+function getW(){return ls(DB.WORK,[]);}
+function setW(v){lss(DB.WORK,v);}
 function getN(){return ls(DB.NOTIF,[]);}
 function setN(v){lss(DB.NOTIF,v);}
 function nid(arr){return arr.length?Math.max.apply(null,arr.map(function(x){return x.id;}))+1:1;}
@@ -466,6 +468,7 @@ var ANAV=[
   {l:'Manage Leaves',i:'file',p:'/admin/leave'},
   {l:'Vouchers',i:'voucher',p:'/admin/voucher'},
   {l:'Advances',i:'dollar',p:'/admin/advance'},
+  {l:'Service Reports',i:'file',p:'/admin/service'},
   {l:'Purchase Invoices',i:'invoice',p:'/admin/purchase'},
   {l:'Staff Directory',i:'users',p:'/admin/staff'},
   {l:'Payroll',i:'dollar',p:'/admin/salary'},
@@ -480,6 +483,7 @@ var ENAV=[
   {l:'Apply Leave',i:'file',p:'/leave/apply'},
   {l:'Leave History',i:'list',p:'/leave/history'},
   {l:'Vouchers',i:'voucher',p:'/voucher'},
+  {l:'Work Completion',i:'check',p:'/work/submit'},
   {l:'Purchase Invoice',i:'invoice',p:'/purchase'},
   {l:'My Profile',i:'user',p:'/profile'}
 ];
@@ -643,6 +647,7 @@ var ROUTES={
   '/admin/leave':pgAdminLeave,
   '/admin/voucher':pgAdminVoucher,
   '/admin/advance':pgAdminAdvance,
+  '/admin/service':pgAdminService,
   '/admin/purchase':pgAdminPurchase,
   '/admin/staff':pgAdminStaff,
   '/admin/salary':pgAdminSalary,
@@ -654,6 +659,7 @@ var ROUTES={
   '/att/history':pgAttHistory,
   '/leave/apply':pgLeaveApply,
   '/leave/history':pgLeaveHistory,
+  '/work/submit':pgWorkSubmit,
   '/voucher':pgVoucher,
   '/purchase':pgPurchase,
   '/profile':pgProfile
@@ -1582,6 +1588,155 @@ function pgLeaveHistory(){
     +(leaves.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No leave requests yet</td></tr>':
     leaves.map(function(l){var days=l.days||(Math.round((new Date(l.endDate)-new Date(l.startDate))/86400000)+1);return '<tr><td>'+badge(l.type)+'</td><td>'+fd(l.startDate)+'</td><td>'+fd(l.endDate)+'</td><td style="text-align:center">'+days+'</td><td style="font-size:12px;color:#64748b;max-width:150px">'+l.reason+'</td><td>'+badge(l.status)+'</td></tr>';}).join(''))
     +'</tbody></table></div></div></div>';
+}
+
+// ============ WORK COMPLETION ============
+function pgWorkSubmit(){
+  var works=getW().filter(function(w){return w.userId===CU.id;}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
+  var html='<div style="max-width:700px">'
+    +'<div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Submit Work Completion</h1><p style="color:#64748b;font-size:13px">Submit your work completion reports with service documentation.</p></div>'
+    +'<div class="card" style="margin-bottom:20px">'
+    +'<h3 style="font-weight:600;margin-bottom:14px">New Work Completion</h3>'
+    +'<div style="margin-bottom:10px"><label class="label">Project / Job</label><input class="input" type="text" id="wc_proj" placeholder="e.g., Project Alpha, Office HVAC"/></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" type="date" id="wc_date" value="'+td()+'"/></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Description of Work Completed</label><textarea class="input" id="wc_desc" rows="3" placeholder="Details about work completed..."></textarea></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Service Report (PDF/Image)</label><input class="input" type="file" id="wc_file" accept=".pdf,.jpg,.jpeg,.png,.gif" onchange="previewFile()"/><div id="filePreview" style="margin-top:6px;font-size:12px;color:#64748b"></div></div>'
+    +'<button class="btn btn-p" onclick="submitWork()" style="width:100%;justify-content:center">Submit Work Completion</button>'
+    +'</div>'
+    +'<div class="card">'
+    +'<h3 style="font-weight:600;margin-bottom:14px">Your Submissions</h3>';
+  if(works.length===0){
+    html+='<div style="text-align:center;color:#94a3b8;padding:24px">No submissions yet</div>';
+  } else {
+    html+='<div style="overflow-x:auto"><table style="width:100%">'
+      +'<thead><tr><th style="font-size:11px">Date</th><th style="font-size:11px">Project</th><th style="font-size:11px">Description</th><th style="font-size:11px">File</th><th style="font-size:11px">Status</th></tr></thead><tbody>';
+    works.forEach(function(w){
+      var hasFile=w.file?'<a href="#" onclick="downloadFile(this.dataset.id,event)" data-id="'+w.id+'" style="color:#0f766e">Download</a>':'—';
+      html+='<tr><td style="font-size:12px">'+fd(w.date)+'</td><td style="font-size:12px">'+w.project+'</td><td style="font-size:12px;max-width:150px">'+w.description.substring(0,30)+'...</td><td style="font-size:12px">'+hasFile+'</td><td>'+badge(w.status)+'</td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div></div>';
+  return html;
+}
+function previewFile(){
+  var file=document.getElementById('wc_file').files[0];
+  var preview=document.getElementById('filePreview');
+  if(file){
+    preview.textContent='✓ '+file.name+' ('+Math.round(file.size/1024)+' KB)';
+  } else {
+    preview.textContent='';
+  }
+}
+function submitWork(){
+  var proj=document.getElementById('wc_proj').value.trim();
+  var date=document.getElementById('wc_date').value;
+  var desc=document.getElementById('wc_desc').value.trim();
+  var fileInput=document.getElementById('wc_file');
+  if(!proj||!date||!desc){toast('All fields required','err');return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var works=getW();
+    works.push({
+      id:nid(works),
+      userId:CU.id,
+      project:proj,
+      date:date,
+      description:desc,
+      file:e.target.result,
+      fileName:fileInput.files[0]?fileInput.files[0].name:'',
+      status:'pending',
+      createdAt:new Date().toISOString()
+    });
+    setW(works);
+    document.getElementById('wc_proj').value='';
+    document.getElementById('wc_date').value=td();
+    document.getElementById('wc_desc').value='';
+    document.getElementById('wc_file').value='';
+    document.getElementById('filePreview').textContent='';
+    go('/work/submit');
+    toast('Work completion submitted for approval');
+  };
+  if(fileInput.files[0]){
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    var works=getW();
+    works.push({
+      id:nid(works),
+      userId:CU.id,
+      project:proj,
+      date:date,
+      description:desc,
+      file:null,
+      fileName:'',
+      status:'pending',
+      createdAt:new Date().toISOString()
+    });
+    setW(works);
+    document.getElementById('wc_proj').value='';
+    document.getElementById('wc_date').value=td();
+    document.getElementById('wc_desc').value='';
+    go('/work/submit');
+    toast('Work completion submitted for approval');
+  }
+}
+function downloadFile(workId,evt){
+  evt.preventDefault();
+  var works=getW();
+  var work=works.filter(function(w){return w.id===parseInt(workId);})[0];
+  if(work&&work.file){
+    var link=document.createElement('a');
+    link.href=work.file;
+    link.download=work.fileName||'service-report';
+    link.click();
+  }
+}
+
+// ============ ADMIN SERVICE REPORTS ============
+function pgAdminService(){
+  var works=getW().sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
+  var users=getU();
+  var userMap={};users.forEach(function(u){userMap[u.id]=u.name;});
+  var html='<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Service Reports</h1><p style="color:#64748b;font-size:13px">All employee work completion reports for invoicing.</p></div>'
+    +'<div class="card">';
+  if(works.length===0){
+    html+='<div style="text-align:center;color:#94a3b8;padding:32px">No service reports submitted yet</div>';
+  } else {
+    html+='<div style="overflow-x:auto"><table style="width:100%">'
+      +'<thead><tr><th style="font-size:11px">Employee</th><th style="font-size:11px">Date</th><th style="font-size:11px">Project</th><th style="font-size:11px">Description</th><th style="font-size:11px">File</th><th style="font-size:11px">Status</th><th style="font-size:11px">Action</th></tr></thead><tbody>';
+    works.forEach(function(w){
+      var empName=userMap[w.userId]||'Unknown';
+      var hasFile=w.file?'<a href="#" onclick="adDownloadFile(this.dataset.id,event)" data-id="'+w.id+'" style="color:#0f766e">Download</a>':'—';
+      var statusBtn='<button class="btn btn-sm btn-p" onclick="updateWorkStatus('+w.id+',\'approved\')" style="margin-right:4px">Approve</button>'
+        +'<button class="btn btn-sm btn-d" onclick="updateWorkStatus('+w.id+',\'rejected\')" style="">Reject</button>';
+      html+='<tr><td style="font-size:12px;font-weight:500">'+empName+'</td><td style="font-size:12px">'+fd(w.date)+'</td><td style="font-size:12px">'+w.project+'</td><td style="font-size:12px;max-width:120px">'+w.description.substring(0,25)+'...</td><td style="font-size:12px">'+hasFile+'</td><td>'+badge(w.status)+'</td><td style="font-size:12px">'+(w.status==='pending'?statusBtn:badge(w.status))+'</td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div></div>';
+  return html;
+}
+function adDownloadFile(workId,evt){
+  evt.preventDefault();
+  var works=getW();
+  var work=works.filter(function(w){return w.id===parseInt(workId);})[0];
+  if(work&&work.file){
+    var link=document.createElement('a');
+    link.href=work.file;
+    link.download=work.fileName||'service-report';
+    link.click();
+  }
+}
+function updateWorkStatus(workId,status){
+  var works=getW();
+  var widx=works.findIndex(function(w){return w.id===workId;});
+  if(widx>=0){
+    works[widx].status=status;
+    works[widx].approvedAt=new Date().toISOString();
+    setW(works);
+    go('/admin/service');
+    toast('Work status updated to '+status);
+  }
 }
 
 // ============ VOUCHERS (EMPLOYEE) ============
