@@ -307,7 +307,7 @@ window._fsSave = function(k, v){
 <script>
 // ============ DATA ============
 var DB={
-  USERS:'hr_u', ATT:'hr_a', LEAVE:'hr_l', HOL:'hr_h', SAL:'hr_s', NOTIF:'hr_n', VOUCHER:'hr_v', PURCHASE:'hr_pi', ADVANCE:'hr_adv', WORK:'hr_work'
+  USERS:'hr_u', ATT:'hr_a', LEAVE:'hr_l', HOL:'hr_h', SAL:'hr_s', NOTIF:'hr_n', VOUCHER:'hr_v', PURCHASE:'hr_pi', ADVANCE:'hr_adv', WORK:'hr_work', TASK:'hr_task'
 };
 var SEED_USERS=[
   {id:1,username:'admin',password:'admin123',name:'Admin User',role:'admin',email:'admin@airdoor.com',phone:'',designation:'HR Manager',department:'HR',monthlySalary:0,isActive:true},
@@ -365,6 +365,8 @@ function getS(){return ls(DB.SAL,[]);}
 function setS(v){lss(DB.SAL,v);}
 function getW(){return ls(DB.WORK,[]);}
 function setW(v){lss(DB.WORK,v);}
+function getT(){return ls(DB.TASK,[]);}
+function setT(v){lss(DB.TASK,v);}
 function getN(){return ls(DB.NOTIF,[]);}
 function setN(v){lss(DB.NOTIF,v);}
 function nid(arr){return arr.length?Math.max.apply(null,arr.map(function(x){return x.id;}))+1:1;}
@@ -482,6 +484,7 @@ var ANAV=[
   {l:'Manage Attendance',i:'cal',p:'/admin/att'},
   {l:'Manage Leaves',i:'file',p:'/admin/leave'},
   {l:'Vouchers',i:'voucher',p:'/admin/voucher'},
+  {l:'Tasks',i:'list',p:'/tasks'},
   {l:'Service Reports',i:'file',p:'/admin/service'},
   {l:'Purchase Invoices',i:'invoice',p:'/admin/purchase'},
   {l:'Staff Directory',i:'users',p:'/admin/staff'},
@@ -497,6 +500,7 @@ var ENAV=[
   {l:'Apply Leave',i:'file',p:'/leave/apply'},
   {l:'Leave History',i:'list',p:'/leave/history'},
   {l:'Vouchers',i:'voucher',p:'/voucher'},
+  {l:'Tasks',i:'list',p:'/tasks'},
   {l:'Work Completion',i:'check',p:'/work/submit'},
   {l:'Purchase Invoice',i:'invoice',p:'/purchase'},
   {l:'My Profile',i:'user',p:'/profile'}
@@ -691,6 +695,7 @@ var ROUTES={
   '/work/submit':pgWorkSubmit,
   '/voucher':pgVoucher,
   '/purchase':pgPurchase,
+  '/tasks':pgTasks,
   '/profile':pgProfile
 };
 function go(path,_isRetry){
@@ -1148,8 +1153,8 @@ function pgAdminVoucher(){
     +'<div class="stat-card" style="grid-column:span 2;display:flex;align-items:center"><button class="btn btn-p" onclick="giveAdvanceModal()" style="width:100%;justify-content:center">+ Give Advance</button></div>'
     +'</div>'
     +'<div class="card" style="margin-bottom:20px"><h3 style="font-weight:600;margin-bottom:14px;font-size:15px">Vouchers</h3><div style="overflow-x:auto"><table>'
-    +'<thead><tr><th>Employee</th><th>Voucher #</th><th>Category</th><th>Date</th><th>Amount</th><th>Balance to Pay</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
-    +(vouchers.length===0?'<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted</td></tr>':
+    +'<thead><tr><th>Employee</th><th>Voucher #</th><th>Category</th><th>Job No.</th><th>Date</th><th>Amount</th><th>Balance to Pay</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
+    +(vouchers.length===0?'<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted</td></tr>':
     (function(){
       var byUser={};
       allVouchers.forEach(function(v){(byUser[v.userId]=byUser[v.userId]||[]).push(v);});
@@ -1165,7 +1170,7 @@ function pgAdminVoucher(){
         return '<tr>'
           +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div></td>'
           +'<td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td>'
-          +'<td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td>'
+          +'<td>'+badge(v.category)+'</td><td style="font-size:12px;color:#64748b">'+(v.jobNumber||'—')+'</td><td>'+fd(v.date)+'</td>'
           +'<td style="font-weight:600">'+ru(v.amount)+'</td>'
           +'<td style="font-weight:600;color:'+(bal.balance>0?'#0f766e':'#64748b')+'">'+ru(bal.balance)+(bal.deducted>0?' <span style="font-size:11px;color:#94a3b8">(-'+ru(bal.deducted)+')</span>':'')+'</td>'
           +'<td>'+badge(v.status)+'</td>'
@@ -1213,21 +1218,27 @@ function editVoucherModal(id){
   if(!v)return;
   var html='<div><h3 style="font-weight:600;margin-bottom:14px">Edit Voucher</h3>'
     +'<div style="margin-bottom:10px"><label class="label">Voucher Number</label><input class="input" id="ev_vno" value="'+v.voucherNo+'"/></div>'
-    +'<div style="margin-bottom:10px"><label class="label">Category</label><select class="input" id="ev_cat"><option value="cash_voucher"'+(v.category==='cash_voucher'?' selected':'')+'>Cash Voucher</option><option value="project_expense"'+(v.category==='project_expense'?' selected':'')+'>Project Expense</option><option value="travel_expense"'+(v.category==='travel_expense'?' selected':'')+'>Travel Expense</option></select></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Category</label><select class="input" id="ev_cat" onchange="toggleEvJobNo()"><option value="cash_voucher"'+(v.category==='cash_voucher'?' selected':'')+'>Cash Voucher</option><option value="project_expense"'+(v.category==='project_expense'?' selected':'')+'>Project Expense</option><option value="travel_expense"'+(v.category==='travel_expense'?' selected':'')+'>Travel Expense</option></select></div>'
+    +'<div style="margin-bottom:10px;display:'+(v.category==='project_expense'?'block':'none')+'" id="ev_jobno_wrap"><label class="label">Job Number <span style="color:#dc2626">*</span></label><input class="input" id="ev_jobno" value="'+(v.jobNumber||'')+'"/></div>'
     +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" id="ev_date" type="date" value="'+v.date+'"/></div>'
     +'<div style="margin-bottom:14px"><label class="label">Amount (₹)</label><input class="input" type="number" id="ev_amt" min="0" step="0.01" value="'+v.amount+'"/></div>'
     +'<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="saveVoucherEdit('+id+')">Save Changes</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div></div>';
   openModal(html);
+}
+function toggleEvJobNo(){
+  document.getElementById('ev_jobno_wrap').style.display=document.getElementById('ev_cat').value==='project_expense'?'block':'none';
 }
 function saveVoucherEdit(id){
   var vno=document.getElementById('ev_vno').value.trim();
   var cat=document.getElementById('ev_cat').value;
   var date=document.getElementById('ev_date').value;
   var amt=Number(document.getElementById('ev_amt').value);
+  var jobNo=document.getElementById('ev_jobno').value.trim();
   if(!vno||!date||!amt||amt<=0){toast('All fields required','err');return;}
+  if(cat==='project_expense'&&!jobNo){toast('Job Number is required for Project Expense vouchers','err');return;}
   var vouchers=getV();var i=vouchers.findIndex(function(v){return v.id===id;});
   if(i<0)return;
-  vouchers[i].voucherNo=vno;vouchers[i].category=cat;vouchers[i].date=date;vouchers[i].amount=amt;
+  vouchers[i].voucherNo=vno;vouchers[i].category=cat;vouchers[i].jobNumber=cat==='project_expense'?jobNo:'';vouchers[i].date=date;vouchers[i].amount=amt;
   setV(vouchers);closeModal();go(CP);toast('Voucher updated');
 }
 function deleteVoucher(id){
@@ -1240,21 +1251,27 @@ function editEmpVoucherModal(id){
   if(!v||v.status!=='pending')return;
   var html='<div><h3 style="font-weight:600;margin-bottom:14px">Edit Voucher</h3>'
     +'<div style="margin-bottom:10px"><label class="label">Voucher Number</label><input class="input" id="eev_vno" value="'+v.voucherNo+'"/></div>'
-    +'<div style="margin-bottom:10px"><label class="label">Category</label><select class="input" id="eev_cat"><option value="cash_voucher"'+(v.category==='cash_voucher'?' selected':'')+'>Cash Voucher</option><option value="project_expense"'+(v.category==='project_expense'?' selected':'')+'>Project Expense</option><option value="travel_expense"'+(v.category==='travel_expense'?' selected':'')+'>Travel Expense</option></select></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Category</label><select class="input" id="eev_cat" onchange="toggleEevJobNo()"><option value="cash_voucher"'+(v.category==='cash_voucher'?' selected':'')+'>Cash Voucher</option><option value="project_expense"'+(v.category==='project_expense'?' selected':'')+'>Project Expense</option><option value="travel_expense"'+(v.category==='travel_expense'?' selected':'')+'>Travel Expense</option></select></div>'
+    +'<div style="margin-bottom:10px;display:'+(v.category==='project_expense'?'block':'none')+'" id="eev_jobno_wrap"><label class="label">Job Number <span style="color:#dc2626">*</span></label><input class="input" id="eev_jobno" value="'+(v.jobNumber||'')+'"/></div>'
     +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" id="eev_date" type="date" value="'+v.date+'" max="'+td()+'"/></div>'
     +'<div style="margin-bottom:14px"><label class="label">Amount (₹)</label><input class="input" type="number" id="eev_amt" min="0" step="0.01" value="'+v.amount+'"/></div>'
     +'<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="saveEmpVoucherEdit('+id+')">Save Changes</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div></div>';
   openModal(html);
+}
+function toggleEevJobNo(){
+  document.getElementById('eev_jobno_wrap').style.display=document.getElementById('eev_cat').value==='project_expense'?'block':'none';
 }
 function saveEmpVoucherEdit(id){
   var vno=document.getElementById('eev_vno').value.trim();
   var cat=document.getElementById('eev_cat').value;
   var date=document.getElementById('eev_date').value;
   var amt=Number(document.getElementById('eev_amt').value);
+  var jobNo=document.getElementById('eev_jobno').value.trim();
   if(!vno||!date||!amt||amt<=0){toast('All fields required','err');return;}
+  if(cat==='project_expense'&&!jobNo){toast('Job Number is required for Project Expense vouchers','err');return;}
   var vouchers=getV();var i=vouchers.findIndex(function(v){return v.id===id;});
   if(i<0)return;
-  vouchers[i].voucherNo=vno;vouchers[i].category=cat;vouchers[i].date=date;vouchers[i].amount=amt;
+  vouchers[i].voucherNo=vno;vouchers[i].category=cat;vouchers[i].jobNumber=cat==='project_expense'?jobNo:'';vouchers[i].date=date;vouchers[i].amount=amt;
   setV(vouchers);closeModal();go(CP);toast('Voucher updated');
 }
 function deleteEmpVoucher(id){
@@ -1812,6 +1829,108 @@ function downloadFile(workId,evt){
 }
 
 // ============ ADMIN SERVICE REPORTS ============
+// ============ TASKS ============
+function pgTasks(){
+  var tasks=getT().slice().reverse();
+  var users=getU();
+  var userMap={};users.forEach(function(u){userMap[u.id]=u.name;});
+  var pending=tasks.filter(function(t){return t.status==='pending';}).length;
+  var completed=tasks.filter(function(t){return t.status==='completed';}).length;
+  var myAssigned=tasks.filter(function(t){return t.assignedTo===CU.id&&t.status==='pending';}).length;
+  return '<div><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px">'
+    +'<div><h1 style="font-size:22px;font-weight:700">Tasks</h1><p style="color:#64748b;font-size:13px">Assign tasks to anyone and track completion.</p></div>'
+    +'<button class="btn btn-p" onclick="assignTaskModal()">+ Assign Task</button>'
+    +'</div>'
+    +'<div class="g4" style="margin-bottom:20px">'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">TOTAL TASKS</div><div style="font-size:22px;font-weight:700">'+tasks.length+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">PENDING</div><div style="font-size:22px;font-weight:700;color:#d97706">'+pending+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">COMPLETED</div><div style="font-size:22px;font-weight:700;color:#16a34a">'+completed+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">ASSIGNED TO ME</div><div style="font-size:22px;font-weight:700;color:#2563eb">'+myAssigned+'</div></div>'
+    +'</div>'
+    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Task</th><th>Assigned To</th><th>Assigned By</th><th>Date</th><th>Status</th><th>Remarks</th><th>Actions</th></tr></thead><tbody>'
+    +(tasks.length===0?'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:32px">No tasks yet</td></tr>':
+    tasks.map(function(t){
+      var canComplete=t.status==='pending'&&(t.assignedTo===CU.id||CU.role==='admin');
+      var canDelete=t.assignedBy===CU.id||CU.role==='admin';
+      return '<tr>'
+        +'<td style="max-width:220px"><div style="font-weight:500;font-size:13px">'+t.title+'</div>'+(t.notes?'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+t.notes+'</div>':'')+'</td>'
+        +'<td style="font-size:13px">'+(userMap[t.assignedTo]||'Unknown')+'</td>'
+        +'<td style="font-size:13px;color:#64748b">'+(userMap[t.assignedBy]||'Unknown')+'</td>'
+        +'<td style="font-size:12px">'+fd(t.date)+'</td>'
+        +'<td>'+badge(t.status)+'</td>'
+        +'<td style="font-size:12px;color:#64748b;max-width:160px">'+(t.remarks||'—')+'</td>'
+        +'<td>'+(canComplete?'<button class="btn btn-p btn-sm" style="margin-right:4px" onclick="completeTaskModal('+t.id+')">Mark Complete</button>':'')
+        +(canDelete?'<button class="btn btn-d btn-sm" onclick="deleteTask('+t.id+')">Delete</button>':'')+'</td></tr>';
+    }).join(''))
+    +'</tbody></table></div></div></div>';
+}
+function assignTaskModal(){
+  var emps=getU().filter(function(u){return u.isActive && u.id!==CU.id;});
+  var html='<div><h3 style="font-weight:600;margin-bottom:14px">Assign Task</h3>'
+    +'<div style="margin-bottom:12px"><label class="label">Assign To</label><select class="input" id="tk_emp" style="padding:8px 12px">'
+    +emps.map(function(e){return '<option value="'+e.id+'">'+e.name+' ('+e.role+')</option>';}).join('')
+    +'</select></div>'
+    +'<div style="margin-bottom:12px"><label class="label">Task Title</label><input class="input" id="tk_title" placeholder="e.g., Prepare site report"/></div>'
+    +'<div style="margin-bottom:12px"><label class="label">Notes (optional)</label><textarea class="input" id="tk_notes" rows="3" placeholder="Additional details..."></textarea></div>'
+    +'<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-p" onclick="saveTask()">Assign Task</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div>'
+    +'</div>';
+  openModal(html);
+}
+function saveTask(){
+  var empId=Number(document.getElementById('tk_emp').value);
+  var title=document.getElementById('tk_title').value.trim();
+  var notes=document.getElementById('tk_notes').value.trim();
+  if(!title){toast('Task title required','err');return;}
+  var tasks=getT();
+  tasks.push({
+    id:nid(tasks),
+    assignedTo:empId,
+    assignedBy:CU.id,
+    title:title,
+    notes:notes,
+    date:td(),
+    status:'pending',
+    remarks:'',
+    createdAt:new Date().toISOString()
+  });
+  setT(tasks);
+  closeModal();
+  pushNotif(empId,'New Task Assigned',CU.name+' assigned you a task: '+title,'info');
+  go('/tasks');
+  toast('Task assigned!');
+}
+function completeTaskModal(id){
+  var task=getT().filter(function(t){return t.id===id;})[0];
+  if(!task)return;
+  var html='<div><h3 style="font-weight:600;margin-bottom:14px">Complete Task</h3>'
+    +'<p style="font-size:13px;color:#64748b;margin-bottom:12px">'+task.title+'</p>'
+    +'<div style="margin-bottom:12px"><label class="label">Completion Remarks</label><textarea class="input" id="tk_complete_remarks" rows="3" placeholder="What was done..."></textarea></div>'
+    +'<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-p" onclick="saveTaskComplete('+id+')">Mark Complete</button><button class="btn btn-o" onclick="closeModal()">Cancel</button></div>'
+    +'</div>';
+  openModal(html);
+}
+function saveTaskComplete(id){
+  var remarks=document.getElementById('tk_complete_remarks').value.trim();
+  var tasks=getT();
+  var i=tasks.findIndex(function(t){return t.id===id;});
+  if(i<0)return;
+  tasks[i].status='completed';
+  tasks[i].remarks=remarks;
+  tasks[i].completedAt=new Date().toISOString();
+  setT(tasks);
+  closeModal();
+  pushNotif(tasks[i].assignedBy,'Task Completed',CU.name+' completed the task: '+tasks[i].title,'success');
+  go('/tasks');
+  toast('Task marked complete');
+}
+function deleteTask(id){
+  if(!confirm('Delete this task?'))return;
+  var tasks=getT().filter(function(t){return t.id!==id;});
+  setT(tasks);
+  go('/tasks');
+  toast('Task deleted');
+}
 function pgAdminService(){
   var works=getW().sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
   var users=getU();
@@ -1873,7 +1992,8 @@ function pgVoucher(){
     +'<div class="card">'
     +'<h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Submit New Voucher</h3>'
     +'<div style="margin-bottom:10px"><label class="label">Voucher Number</label><input class="input" id="vno" placeholder="e.g. VCH-1001"/></div>'
-    +'<div style="margin-bottom:10px"><label class="label">Voucher Category</label><select class="input" id="vcat"><option value="cash_voucher">Cash Voucher</option><option value="project_expense">Project Expense</option><option value="travel_expense">Travel Expense</option></select></div>'
+    +'<div style="margin-bottom:10px"><label class="label">Voucher Category</label><select class="input" id="vcat" onchange="toggleVJobNo()"><option value="cash_voucher">Cash Voucher</option><option value="project_expense">Project Expense</option><option value="travel_expense">Travel Expense</option></select></div>'
+    +'<div style="margin-bottom:10px;display:none" id="vjobno_wrap"><label class="label">Job Number <span style="color:#dc2626">*</span></label><input class="input" id="vjobno" placeholder="e.g. JOB-2026-014"/></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
     +'<div><label class="label">Date</label><input class="input" type="date" id="vdate" value="'+td()+'" max="'+td()+'"/></div>'
     +'<div><label class="label">Amount (&#8377;)</label><input class="input" type="number" id="vamt" min="0" step="0.01" placeholder="0.00"/></div>'
@@ -1891,13 +2011,13 @@ function pgVoucher(){
     +'</div></div>'
     +'</div>'
     +'<div class="card"><div style="overflow-x:auto"><table>'
-    +'<thead><tr><th>Voucher #</th><th>Category</th><th>Date</th><th>Amount</th>'+(advGiven>0?'<th>Balance After Advance</th>':'')+'<th>Status</th><th>Actions</th></tr></thead><tbody>'
-    +(vouchers.length===0?'<tr><td colspan="'+(advGiven>0?7:6)+'" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted yet</td></tr>':
+    +'<thead><tr><th>Voucher #</th><th>Category</th><th>Job No.</th><th>Date</th><th>Amount</th>'+(advGiven>0?'<th>Balance After Advance</th>':'')+'<th>Status</th><th>Actions</th></tr></thead><tbody>'
+    +(vouchers.length===0?'<tr><td colspan="'+(advGiven>0?8:7)+'" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted yet</td></tr>':
     (function(){
       var balMap=computeAdvBalances(vouchers,advGiven);
       return vouchers.map(function(v){
         var bal=balMap[v.id]||{balance:Number(v.amount),deducted:0};
-        return '<tr><td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td><td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td><td style="font-weight:600">'+ru(v.amount)+'</td>'
+        return '<tr><td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td><td>'+badge(v.category)+'</td><td style="font-size:12px;color:#64748b">'+(v.jobNumber||'—')+'</td><td>'+fd(v.date)+'</td><td style="font-weight:600">'+ru(v.amount)+'</td>'
           +(advGiven>0?'<td style="font-weight:600;color:#0284c7">'+ru(bal.balance)+(bal.deducted>0?' <span style="font-size:11px;color:#94a3b8">(-'+ru(bal.deducted)+')</span>':'')+'</td>':'')
           +'<td>'+badge(v.status)+'</td>'
           +'<td>'+(v.status==='pending'?'<button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editEmpVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteEmpVoucher('+v.id+')">Delete</button>':'')+'</td></tr>';
@@ -1905,14 +2025,20 @@ function pgVoucher(){
     })())
     +'</tbody></table></div></div></div>';
 }
+function toggleVJobNo(){
+  var cat=document.getElementById('vcat').value;
+  document.getElementById('vjobno_wrap').style.display=cat==='project_expense'?'block':'none';
+}
 function submitVoucher(){
   var vno=document.getElementById('vno').value.trim();
   var cat=document.getElementById('vcat').value;
   var date=document.getElementById('vdate').value;
   var amt=Number(document.getElementById('vamt').value);
+  var jobNo=document.getElementById('vjobno').value.trim();
   if(!vno||!date||!amt||amt<=0){toast('All fields required','err');return;}
+  if(cat==='project_expense'&&!jobNo){toast('Job Number is required for Project Expense vouchers','err');return;}
   var vouchers=getV();
-  vouchers.push({id:nid(vouchers),userId:CU.id,voucherNo:vno,category:cat,date:date,amount:amt,status:'pending',createdAt:new Date().toISOString()});
+  vouchers.push({id:nid(vouchers),userId:CU.id,voucherNo:vno,category:cat,jobNumber:cat==='project_expense'?jobNo:'',date:date,amount:amt,status:'pending',createdAt:new Date().toISOString()});
   setV(vouchers);
   var admins=getU().filter(function(u){return u.role==='admin';});
   admins.forEach(function(a){pushNotif(a.id,'New Voucher Submitted',CU.name+' submitted voucher '+vno+' ('+ru(amt)+') for approval.','info');});
