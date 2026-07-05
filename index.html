@@ -616,7 +616,7 @@ function closeDrawer(){
   if(dc)dc.style.transform='';
 }
 document.addEventListener('click',function(e){
-  if(!e.target.closest('#switchWrap'))closeAll();
+  if(!e.target.closest('#switchWrap')&&!e.target.closest('[onclick*="toggleNotif"]')&&!e.target.closest('#notifPanel'))closeAll();
   if(!e.target.closest('#notifPanel')&&!e.target.closest('[onclick*="toggleNotif"]')){notifOpen=false;document.getElementById('notifPanel').style.display='none';}
   if(!e.target.closest('#mobSwitchMenu')&&!e.target.closest('[onclick*="toggleMobSwitch"]'))document.getElementById('mobSwitchMenu').style.display='none';
 });
