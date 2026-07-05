@@ -482,7 +482,6 @@ var ANAV=[
   {l:'Manage Attendance',i:'cal',p:'/admin/att'},
   {l:'Manage Leaves',i:'file',p:'/admin/leave'},
   {l:'Vouchers',i:'voucher',p:'/admin/voucher'},
-  {l:'Advances',i:'dollar',p:'/admin/advance'},
   {l:'Service Reports',i:'file',p:'/admin/service'},
   {l:'Purchase Invoices',i:'invoice',p:'/admin/purchase'},
   {l:'Staff Directory',i:'users',p:'/admin/staff'},
@@ -676,7 +675,7 @@ var ROUTES={
   '/admin/att':pgAdminAtt,
   '/admin/leave':pgAdminLeave,
   '/admin/voucher':pgAdminVoucher,
-  '/admin/advance':pgAdminAdvance,
+  '/admin/advance':pgAdminVoucher,
   '/admin/service':pgAdminService,
   '/admin/purchase':pgAdminPurchase,
   '/admin/staff':pgAdminStaff,
@@ -1098,40 +1097,93 @@ function rejectLeave(id){
 }
 
 // ============ ADMIN VOUCHERS ============
+function computeAdvBalances(voucherList,advTotal){
+  // Deduct advance sequentially (oldest unpaid first). Paid vouchers are already settled -> balance 0, and don't consume the pool.
+  var sorted=voucherList.slice().sort(function(a,b){return a.createdAt.localeCompare(b.createdAt);});
+  var remaining=Number(advTotal)||0;
+  var map={};
+  sorted.forEach(function(v){
+    if(v.status==='paid'){
+      map[v.id]={balance:0,deducted:0};
+      return;
+    }
+    var ded=Math.min(remaining,Number(v.amount));
+    remaining-=ded;
+    map[v.id]={balance:Number(v.amount)-ded,deducted:ded};
+  });
+  return map;
+}
+var voucherFilterEmp='';
+function filterVoucher(v){voucherFilterEmp=v;go('/admin/voucher');}
 function pgAdminVoucher(){
-  var vouchers=getV().slice().reverse();
+  var allVouchers=getV();
+  var allAdv=getADV();
+  var vouchers=(voucherFilterEmp?allVouchers.filter(function(v){return String(v.userId)===String(voucherFilterEmp);}):allVouchers).slice().reverse();
+  var advances=(voucherFilterEmp?allAdv.filter(function(a){return String(a.userId)===String(voucherFilterEmp);}):allAdv).slice().reverse();
   var users=getU();
-  var submitted=getV().reduce(function(s,v){return s+Number(v.amount);},0);
-  var paid=getV().filter(function(v){return v.status==='paid';}).reduce(function(s,v){return s+Number(v.amount);},0);
-  var pendingAmt=getV().filter(function(v){return v.status==='pending';}).reduce(function(s,v){return s+Number(v.amount);},0);
-  var approvedAmt=getV().filter(function(v){return v.status==='approved';}).reduce(function(s,v){return s+Number(v.amount);},0);
-  var rejectedCount=getV().filter(function(v){return v.status==='rejected';}).length;
-  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Vouchers</h1><p style="color:#64748b;font-size:13px">Review, approve, and pay employee vouchers.</p></div>'
+  var emps=users.filter(function(u){return u.role==='employee';});
+  var vSet=voucherFilterEmp?allVouchers.filter(function(v){return String(v.userId)===String(voucherFilterEmp);}):allVouchers;
+  var submitted=vSet.reduce(function(s,v){return s+Number(v.amount);},0);
+  var paid=vSet.filter(function(v){return v.status==='paid';}).reduce(function(s,v){return s+Number(v.amount);},0);
+  var pendingAmt=vSet.filter(function(v){return v.status==='pending';}).reduce(function(s,v){return s+Number(v.amount);},0);
+  var approvedAmt=vSet.filter(function(v){return v.status==='approved';}).reduce(function(s,v){return s+Number(v.amount);},0);
+  var unpaidAmt=pendingAmt+approvedAmt;
+  var rejectedCount=vSet.filter(function(v){return v.status==='rejected';}).length;
+  var totalAdvPaid=advances.reduce(function(s,a){return s+Number(a.amount);},0);
+  var totalOutstanding=Math.max(0,unpaidAmt-totalAdvPaid);
+  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Vouchers &amp; Advances</h1><p style="color:#64748b;font-size:13px">Review, approve, pay employee vouchers, and manage advances.</p></div>'
+    +'<div class="card" style="margin-bottom:16px;max-width:320px"><label class="label">Filter by Employee</label>'
+    +'<select class="input" id="v_filter_emp" onchange="filterVoucher(this.value)"><option value="">All Employees</option>'
+    +emps.map(function(e){return '<option value="'+e.id+'"'+(String(voucherFilterEmp)===String(e.id)?' selected':'')+'>'+e.name+'</option>';}).join('')
+    +'</select></div>'
     +'<div class="g4" style="margin-bottom:20px">'
-    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">TOTAL SUBMITTED</div><div style="font-size:22px;font-weight:700">'+ru(submitted)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">'+getV().length+' voucher'+(getV().length!==1?'s':'')+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">TOTAL SUBMITTED</div><div style="font-size:22px;font-weight:700">'+ru(submitted)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">'+vSet.length+' voucher'+(vSet.length!==1?'s':'')+'</div></div>'
     +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">PAID</div><div style="font-size:22px;font-weight:700;color:#16a34a">'+ru(paid)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">Settled to employees</div></div>'
     +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">APPROVED &middot; UNPAID</div><div style="font-size:22px;font-weight:700;color:#2563eb">'+ru(approvedAmt)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">Awaiting payment</div></div>'
     +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">PENDING REVIEW</div><div style="font-size:22px;font-weight:700;color:#d97706">'+ru(pendingAmt)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">'+(rejectedCount>0?rejectedCount+' rejected':'Awaiting approval')+'</div></div>'
     +'</div>'
-    +'<div class="card"><div style="overflow-x:auto"><table>'
+    +'<div class="g4" style="margin-bottom:20px">'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">TOTAL ADVANCE PAID</div><div style="font-size:22px;font-weight:700;color:#0284c7">'+ru(totalAdvPaid)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">'+advances.length+' advance'+(advances.length!==1?'s':'')+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">TOTAL OUTSTANDING</div><div style="font-size:22px;font-weight:700;color:#7e22ce">'+ru(totalOutstanding)+'</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">Unpaid vouchers &minus; advance paid</div></div>'
+    +'<div class="stat-card" style="grid-column:span 2;display:flex;align-items:center"><button class="btn btn-p" onclick="giveAdvanceModal()" style="width:100%;justify-content:center">+ Give Advance</button></div>'
+    +'</div>'
+    +'<div class="card" style="margin-bottom:20px"><h3 style="font-weight:600;margin-bottom:14px;font-size:15px">Vouchers</h3><div style="overflow-x:auto"><table>'
     +'<thead><tr><th>Employee</th><th>Voucher #</th><th>Category</th><th>Date</th><th>Amount</th><th>Balance to Pay</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
     +(vouchers.length===0?'<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted</td></tr>':
-    vouchers.map(function(v){
-      var u=users.filter(function(x){return x.id===v.userId;})[0];
-      var advTotal=getADV().filter(function(a){return a.userId===v.userId;}).reduce(function(s,a){return s+Number(a.amount);},0);
-      var balance=Math.max(0,Number(v.amount)-advTotal);
-      return '<tr>'
-        +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div></td>'
-        +'<td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td>'
-        +'<td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td>'
-        +'<td style="font-weight:600">'+ru(v.amount)+'</td>'
-        +'<td style="font-weight:600;color:'+(balance>0?'#0f766e':'#64748b')+'">'+ru(balance)+(advTotal>0?' <span style="font-size:11px;color:#94a3b8">(-'+ru(advTotal)+')</span>':'')+'</td>'
-        +'<td>'+badge(v.status)+'</td>'
-        +'<td>'+(v.status==='pending'
-          ?'<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveVoucher('+v.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectVoucher('+v.id+')">Reject</button>'
-          :v.status==='approved'
-          ?'<button class="btn btn-p btn-sm" style="margin-right:4px" onclick="markVoucherPaid('+v.id+')">Mark Paid</button><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteVoucher('+v.id+')">Delete</button>'
-          :'<button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteVoucher('+v.id+')">Delete</button>')+'</td></tr>';
+    (function(){
+      var byUser={};
+      allVouchers.forEach(function(v){(byUser[v.userId]=byUser[v.userId]||[]).push(v);});
+      var balMap={};
+      Object.keys(byUser).forEach(function(uid){
+        var advTotal=allAdv.filter(function(a){return String(a.userId)===String(uid);}).reduce(function(s,a){return s+Number(a.amount);},0);
+        var m=computeAdvBalances(byUser[uid],advTotal);
+        Object.keys(m).forEach(function(k){balMap[k]=m[k];});
+      });
+      return vouchers.map(function(v){
+        var u=users.filter(function(x){return x.id===v.userId;})[0];
+        var bal=balMap[v.id]||{balance:Number(v.amount),deducted:0};
+        return '<tr>'
+          +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div></td>'
+          +'<td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td>'
+          +'<td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td>'
+          +'<td style="font-weight:600">'+ru(v.amount)+'</td>'
+          +'<td style="font-weight:600;color:'+(bal.balance>0?'#0f766e':'#64748b')+'">'+ru(bal.balance)+(bal.deducted>0?' <span style="font-size:11px;color:#94a3b8">(-'+ru(bal.deducted)+')</span>':'')+'</td>'
+          +'<td>'+badge(v.status)+'</td>'
+          +'<td>'+(v.status==='pending'
+            ?'<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveVoucher('+v.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectVoucher('+v.id+')">Reject</button>'
+            :v.status==='approved'
+            ?'<button class="btn btn-p btn-sm" style="margin-right:4px" onclick="markVoucherPaid('+v.id+')">Mark Paid</button><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteVoucher('+v.id+')">Delete</button>'
+            :'<button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteVoucher('+v.id+')">Delete</button>')+'</td></tr>';
+      }).join('');
+    })())
+    +'</tbody></table></div></div>'
+    +'<div class="card"><h3 style="font-weight:600;margin-bottom:14px;font-size:15px">Advances</h3><div style="overflow-x:auto"><table>'
+    +'<thead><tr><th>Employee</th><th>Advance Paid</th><th>Date</th><th>Status</th><th>Remarks</th><th>Actions</th></tr></thead><tbody>'
+    +(advances.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No advances found</td></tr>':
+    advances.map(function(a){
+      var u=users.filter(function(x){return x.id===a.userId;})[0];
+      var usedBg=a.used?'bg-teal':'bg-blue';var usedLbl=a.used?'Deducted':'Available';
+      return '<tr><td style="font-weight:500">'+(u?u.name:'Unknown')+'</td><td style="font-weight:600">'+ru(a.amount)+'</td><td>'+fd(a.date)+'</td><td><span class="badge '+usedBg+'">'+usedLbl+'</span></td><td style="font-size:12px;color:#64748b">'+(a.remarks||'—')+'</td><td><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editAdvanceModal('+a.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteAdvance('+a.id+')">Delete</button></td></tr>';
     }).join(''))
     +'</tbody></table></div></div></div>';
 }
@@ -1841,13 +1893,16 @@ function pgVoucher(){
     +'<div class="card"><div style="overflow-x:auto"><table>'
     +'<thead><tr><th>Voucher #</th><th>Category</th><th>Date</th><th>Amount</th>'+(advGiven>0?'<th>Balance After Advance</th>':'')+'<th>Status</th><th>Actions</th></tr></thead><tbody>'
     +(vouchers.length===0?'<tr><td colspan="'+(advGiven>0?7:6)+'" style="text-align:center;color:#94a3b8;padding:32px">No vouchers submitted yet</td></tr>':
-    vouchers.map(function(v){
-      var balance=Math.max(0,Number(v.amount)-advGiven);
-      return '<tr><td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td><td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td><td style="font-weight:600">'+ru(v.amount)+'</td>'
-        +(advGiven>0?'<td style="font-weight:600;color:#0284c7">'+ru(balance)+'</td>':'')
-        +'<td>'+badge(v.status)+'</td>'
-        +'<td>'+(v.status==='pending'?'<button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editEmpVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteEmpVoucher('+v.id+')">Delete</button>':'')+'</td></tr>';
-    }).join(''))
+    (function(){
+      var balMap=computeAdvBalances(vouchers,advGiven);
+      return vouchers.map(function(v){
+        var bal=balMap[v.id]||{balance:Number(v.amount),deducted:0};
+        return '<tr><td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td><td>'+badge(v.category)+'</td><td>'+fd(v.date)+'</td><td style="font-weight:600">'+ru(v.amount)+'</td>'
+          +(advGiven>0?'<td style="font-weight:600;color:#0284c7">'+ru(bal.balance)+(bal.deducted>0?' <span style="font-size:11px;color:#94a3b8">(-'+ru(bal.deducted)+')</span>':'')+'</td>':'')
+          +'<td>'+badge(v.status)+'</td>'
+          +'<td>'+(v.status==='pending'?'<button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editEmpVoucherModal('+v.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteEmpVoucher('+v.id+')">Delete</button>':'')+'</td></tr>';
+      }).join('');
+    })())
     +'</tbody></table></div></div></div>';
 }
 function submitVoucher(){
@@ -1865,28 +1920,6 @@ function submitVoucher(){
 }
 
 // ============ ADVANCES (ADMIN) ============
-function pgAdminAdvance(){
-  var advances=getADV().slice().reverse();
-  var totalAdv=advances.reduce(function(s,a){return s+Number(a.amount);},0);
-  var usedAdv=advances.filter(function(a){return a.used===true;}).reduce(function(s,a){return s+Number(a.amount);},0);
-  var availAdv=totalAdv-usedAdv;
-  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Employee Advances</h1><p style="color:#64748b;font-size:13px">Give advances to employees, deducted from voucher payments.</p></div>'+
-    '<div class="g4" style="margin-bottom:20px">'+
-    '<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">TOTAL ADVANCES</div><div style="font-size:22px;font-weight:700">'+ru(totalAdv)+'</div></div>'+
-    '<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">USED/DEDUCTED</div><div style="font-size:22px;font-weight:700">'+ru(usedAdv)+'</div></div>'+
-    '<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">AVAILABLE</div><div style="font-size:22px;font-weight:700">'+ru(availAdv)+'</div></div>'+
-    '<div class="stat-card"><button class="btn btn-p" onclick="giveAdvanceModal()" style="width:100%;justify-content:center">+ Give Advance</button></div>'+
-    '</div>'+
-    '<div class="card" style="overflow-x:auto"><table>'+
-    '<thead><tr><th>Employee</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-  for(var i=0;i<advances.length;i++){
-    var a=advances[i];var u=getU().find(function(x){return x.id===a.userId;});
-    var usedBg=a.used?'bg-teal':'bg-blue';var usedLbl=a.used?'Deducted':'Available';
-    return html+='<tr><td>'+u.name+'</td><td>'+ru(a.amount)+'</td><td>'+fmt(a.date)+'</td><td><span class="badge '+usedBg+'">'+usedLbl+'</span></td><td><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editAdvanceModal('+a.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deleteAdvance('+a.id+')">Delete</button></td></tr>';
-  }
-  return html+'</tbody></table></div></div>';
-}
-
 function giveAdvanceModal(){
   var emps=getU().filter(function(u){return u.role==='employee' && u.isActive;});
   var html='<div><h3 style="font-weight:600;margin-bottom:14px">Give Advance to Employee</h3>'+
