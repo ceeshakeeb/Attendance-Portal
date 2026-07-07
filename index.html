@@ -92,7 +92,7 @@ tr:hover td{background:#f8fafc;}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 /* Switch menu */
-.switch-menu{background:#0f1729;border-radius:8px;margin:2px 8px;overflow:hidden;display:none;}
+.switch-menu{position:absolute;bottom:calc(100% + 4px);left:8px;right:8px;background:#0f1729;border-radius:8px;overflow-y:auto;max-height:240px;display:none;box-shadow:0 -8px 24px rgba(0,0,0,.3);z-index:50;}
 /* Notif panel */
 .npanel{display:none;position:absolute;top:calc(100% + 4px);right:0;width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:99;overflow:hidden;}
 /* Responsive */
@@ -231,7 +231,7 @@ tr:hover td{background:#f8fafc;}
           <span>⇄ Switch Account</span>
           <span id="drawerSwChev" style="transition:transform .2s">▾</span>
         </div>
-        <div id="drawerSwitchMenu" style="background:#0f1729;border-radius:8px;margin:2px 4px;overflow:hidden;display:none"></div>
+        <div id="drawerSwitchMenu" style="position:absolute;bottom:calc(100% + 4px);left:4px;right:4px;background:#0f1729;border-radius:8px;overflow-y:auto;max-height:240px;display:none;box-shadow:0 -8px 24px rgba(0,0,0,.3);z-index:50"></div>
       </div>
       <div class="nav-item" onclick="doLogout();closeDrawer()">⎋ Logout</div>
     </div>
@@ -944,6 +944,18 @@ function pgAdminDash(){
   var total=pA+pL;
   var absent=att.filter(function(a){return a.date===td()&&a.type==='absent'&&a.status==='approved';}).length;
   var staff=getU().filter(function(u){return u.role==='employee';});
+  var allV=getV(),allAdv=getADV();
+  var vPending=allV.filter(function(v){return v.status==='pending';});
+  var vApproved=allV.filter(function(v){return v.status==='approved';});
+  var vUnpaidAmt=vPending.concat(vApproved).reduce(function(s,v){return s+Number(v.amount);},0);
+  var advTotalPaid=allAdv.reduce(function(s,a){return s+Number(a.amount);},0);
+  var vOutstanding=Math.max(0,vUnpaidAmt-advTotalPaid);
+  var dNow=new Date(),dMo=dNow.getMonth()+1,dYr=dNow.getFullYear();
+  var salThisMo=getS().filter(function(s){return s.month===dMo&&s.year===dYr;});
+  var salPaid=salThisMo.filter(function(s){return s.status==='approved';});
+  var salPending=salThisMo.filter(function(s){return s.status==='pending';});
+  var salNotRun=staff.length-salThisMo.length;
+  var salNetTotal=salThisMo.reduce(function(s,sr){return s+Number(sr.net||0);},0);
   return '<div>'
     +'<h1 style="font-size:24px;font-weight:700;margin-bottom:4px">Admin Dashboard</h1>'
     +'<p style="color:#64748b;margin-bottom:20px;font-size:13px">Overview of workforce attendance, leaves, and payroll.</p>'
@@ -996,7 +1008,26 @@ function pgAdminDash(){
         +badge(todayA?(todayA.status==='approved'?todayA.type:'pending'):'not_submitted')
         +'</div>';
     }).join('')
-    +'</div></div></div>';
+    +'</div></div>'
+    +'<div class="g2" style="margin-top:20px">'
+    +'<div class="card" style="cursor:pointer" onclick="go(\'/admin/voucher\')">'
+    +'<h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Voucher Summary</h3>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#fff7ed;border-radius:8px"><span style="font-size:12px;color:#92400e">Pending Review</span><strong style="color:#d97706">'+vPending.length+'</strong></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#eff6ff;border-radius:8px"><span style="font-size:12px;color:#1d4ed8">Approved &middot; Unpaid</span><strong style="color:#2563eb">'+vApproved.length+'</strong></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#faf5ff;border-radius:8px"><span style="font-size:12px;color:#6b21a8">Total Outstanding</span><strong style="color:#7e22ce">'+ru(vOutstanding)+'</strong></div>'
+    +'</div><div style="font-size:11px;margin-top:10px;color:#0f766e;text-decoration:underline">View vouchers &rarr;</div>'
+    +'</div>'
+    +'<div class="card" style="cursor:pointer" onclick="go(\'/admin/salary\')">'
+    +'<h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Payroll Summary &mdash; '+mn(dMo)+' '+dYr+'</h3>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:8px"><span style="font-size:12px;color:#64748b">Not Run Yet</span><strong>'+(salNotRun>0?salNotRun:0)+'</strong></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#fff7ed;border-radius:8px"><span style="font-size:12px;color:#92400e">Pending Payment</span><strong style="color:#d97706">'+salPending.length+'</strong></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f0fdf4;border-radius:8px"><span style="font-size:12px;color:#166534">Paid</span><strong style="color:#16a34a">'+salPaid.length+'</strong></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f1f5f9;border-radius:8px"><span style="font-size:12px;color:#334155">Total Net (Run)</span><strong>'+ru(salNetTotal)+'</strong></div>'
+    +'</div><div style="font-size:11px;margin-top:10px;color:#0f766e;text-decoration:underline">View payroll &rarr;</div>'
+    +'</div>'
+    +'</div></div>';
 }
 
 // ============ ADMIN ATTENDANCE ============
@@ -1086,9 +1117,12 @@ function pgAdminLeave(){
         +'<td style="text-align:center">'+days+'</td>'
         +'<td style="max-width:140px;font-size:12px;color:#64748b">'+(l.reason||'&mdash;')+'</td>'
         +'<td>'+badge(l.status)+'</td>'
-        +'<td>'+(l.status==='pending'
-          ?'<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveLeave('+l.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectLeave('+l.id+')">Reject</button>'
-          :'<span style="color:#94a3b8;font-size:12px">'+l.status+'</span>')+'</td></tr>';
+        +'<td style="white-space:nowrap">'+(l.status==='pending'
+          ?'<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveLeave('+l.id+')">Approve</button><button class="btn btn-d btn-sm" style="margin-right:4px" onclick="rejectLeave('+l.id+')">Reject</button>'
+          :'')
+          +'<button class="btn btn-d btn-sm" style="margin-right:4px" onclick="deleteLeaveRecord('+l.id+')">Delete</button>'
+          +'<button class="btn btn-o btn-sm" onclick="reapplyLeaveRecord('+l.id+')">Reapply</button>'
+          +'</td></tr>';
     }).join(''))
     +'</tbody></table></div></div></div>';
 }
@@ -1105,6 +1139,22 @@ function rejectLeave(id){
   var r=leaves[i];
   pushNotif(r.userId,'Leave Rejected','Your '+r.type.replace(/_/g,' ')+' request ('+fd(r.startDate)+' - '+fd(r.endDate)+') was rejected.','error');
   go(CP);toast('Leave rejected');
+}
+function deleteLeaveRecord(id){
+  if(!confirm('Delete this leave record permanently? This removes it from both employee and admin records.'))return;
+  var leaves=getL();var i=leaves.findIndex(function(l){return l.id===id;});
+  if(i<0)return;
+  leaves.splice(i,1);setL(leaves);
+  go(CP);toast('Leave record deleted');
+}
+function reapplyLeaveRecord(id){
+  if(!confirm('Delete this leave record and let the employee reapply? (Works even after approval, for correcting mistakes.)'))return;
+  var leaves=getL();var i=leaves.findIndex(function(l){return l.id===id;});
+  if(i<0)return;
+  var r=leaves[i];
+  leaves.splice(i,1);setL(leaves);
+  pushNotif(r.userId,'Leave Record Removed','Your '+r.type.replace(/_/g,' ')+' request ('+fd(r.startDate)+' - '+fd(r.endDate)+') was removed by admin. Please reapply.','error');
+  go(CP);toast('Employee can now reapply');
 }
 
 // ============ ADMIN VOUCHERS ============
@@ -1999,7 +2049,7 @@ function pgVoucher(){
   var paid=vouchers.filter(function(v){return v.status==='paid';}).reduce(function(s,v){return s+Number(v.amount);},0);
   var pending=vouchers.filter(function(v){return v.status==='pending'||v.status==='approved';}).reduce(function(s,v){return s+Number(v.amount);},0);
   var advGiven=getADV().filter(function(a){return a.userId===CU.id;}).reduce(function(s,a){return s+Number(a.amount);},0);
-  var balAfterAdv=submitted-advGiven;
+  var balAfterAdv=pending-advGiven;
   return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Vouchers</h1><p style="color:#64748b;font-size:13px">Submit expense vouchers and track their approval.</p></div>'
     +'<div class="g2" style="margin-bottom:16px">'
     +'<div class="card">'
