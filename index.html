@@ -1001,24 +1001,30 @@ function pgAdminDash(){
 
 // ============ ADMIN ATTENDANCE ============
 function pgAdminAtt(){
+  var users=getU().filter(function(u){return u.role==='employee';});
+  return '<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'    +'<div><h1 style="font-size:22px;font-weight:700">Manage Attendance</h1><p style="color:#64748b;font-size:13px">Review and approve staff attendance records.</p></div></div>'    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'    +'<select class="input" id="attFilterEmp" style="width:180px" onchange="renderAttTable()">'    +'<option value="">All Employees</option>'    +users.map(function(u){return '<option value="'+u.id+'">'+u.name+'</option>';}).join('')    +'</select>'    +'<select class="input" id="attFilterStatus" style="width:140px" onchange="renderAttTable()">'    +'<option value="">All Status</option>'    +'<option value="pending">Pending</option>'    +'<option value="approved">Approved</option>'    +'<option value="rejected">Rejected</option>'    +'</select>'    +'</div></div>'    +'<div class="card"><div id="attTbl" style="overflow-x:auto">'+buildAttTable()+'</div></div></div>';
+}
+function buildAttTable(){
   var att=getA().slice().reverse();
   var users=getU().filter(function(u){return u.role==='employee';});
-  return '<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
-    +'<div><h1 style="font-size:22px;font-weight:700">Manage Attendance</h1><p style="color:#64748b;font-size:13px">Review and approve staff attendance records.</p></div></div>'
-    +'<div class="card"><div style="overflow-x:auto"><table>'
-    +'<thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Time In/Out</th><th>Status</th><th>Details</th><th>Actions</th></tr></thead><tbody>'
-    +(att.length===0?'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px">No attendance records</td></tr>':
-    att.map(function(a){
-      var u=users.filter(function(x){return x.id===a.userId;})[0];
-      return '<tr>'
-        +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div><div style="font-size:11px;color:#64748b">'+(u&&u.designation?u.designation:'')+'</div></td>'
-        +'<td>'+fd(a.date)+'</td><td>'+badge(a.type)+'</td><td>'+badge(a.status)+'</td>'
-        +'<td style="font-size:11px;color:#64748b">'+(a.timeIn||'--')+'→'+(a.timeOut||'--')+'</td>'+'<td style="max-width:140px;font-size:12px;color:#64748b">'+(a.notes||'&mdash;')+'</td>'
-        +'<td>'+(a.status==='pending'
-          ?'<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveAtt('+a.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectAtt('+a.id+')">Reject</button>'
-          :'<span style="color:#94a3b8;font-size:12px">'+a.status+'</span>')+'</td></tr>';
-    }).join(''))
-    +'</tbody></table></div></div></div>';
+  var empEl=document.getElementById('attFilterEmp');
+  var stEl=document.getElementById('attFilterStatus');
+  var empFilter=empEl?empEl.value:'';
+  var stFilter=stEl?stEl.value:'';
+  if(empFilter)att=att.filter(function(a){return String(a.userId)===String(empFilter);});
+  if(stFilter)att=att.filter(function(a){return a.status===stFilter;});
+  if(att.length===0)return '<table><tbody><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:32px">No attendance records</td></tr></tbody></table>';
+  return '<table><thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Status</th><th>Time In/Out</th><th>Details</th><th>Actions</th></tr></thead><tbody>'    +att.map(function(a){      var u=users.filter(function(x){return x.id===a.userId;})[0];      var actions='';      if(a.status==='pending'){        actions='<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveAtt('+a.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectAtt('+a.id+')">Reject</button>';      } else {        actions='<span style="color:#94a3b8;font-size:12px;margin-right:6px">'+a.status+'</span>'          +'<button class="btn btn-d btn-sm" onclick="deleteAttRecord('+a.id+')">Delete</button>';      }      return '<tr>'        +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div><div style="font-size:11px;color:#64748b">'+(u&&u.designation?u.designation:'')+'</div></td>'        +'<td>'+fd(a.date)+'</td><td>'+badge(a.type)+'</td><td>'+badge(a.status)+'</td>'        +'<td style="font-size:11px;color:#64748b">'+(a.timeIn||'--')+'→'+(a.timeOut||'--')+'</td>'        +'<td style="max-width:140px;font-size:12px;color:#64748b">'+(a.notes||'&mdash;')+'</td>'        +'<td>'+actions+'</td></tr>';    }).join('')    +'</tbody></table>';
+}
+function renderAttTable(){var el=document.getElementById('attTbl');if(el)el.innerHTML=buildAttTable();}
+function deleteAttRecord(id){
+  if(!confirm('Delete this attendance record? The employee will be notified to reapply.'))return;
+  var att=getA();var i=att.findIndex(function(a){return a.id===id;});
+  if(i<0)return;
+  var r=att[i];
+  pushNotif(r.userId,'Attendance Record Deleted','Your attendance record for '+fd(r.date)+' ('+r.type.replace(/_/g,' ')+') was removed by admin. Please resubmit your attendance.','error');
+  att.splice(i,1);setA(att);
+  renderAttTable();toast('Attendance record deleted');
 }
 function approveAtt(id){
   var att=getA();var i=att.findIndex(function(a){return a.id===id;});
@@ -1406,7 +1412,7 @@ function renderSalTbl(month,year){
         +'<td>'+ru(c.gross)+'</td><td style="color:#ef4444">'+ru(c.ded)+'</td>'
         +'<td style="font-weight:600;color:#0f766e">'+ru(c.net)+'</td>'
         +'<td>'+(sr?badge(sr.status):'<span class="badge bg-gray">Not Run</span>')+'</td>'
-        +'<td>'+(sr&&sr.status==='pending'?'<button class="btn btn-s btn-sm" onclick="approveSal('+u.id+','+month+','+year+')">Approve</button>':'&mdash;')+'</td></tr>';
+        +'<td>'+(sr&&sr.status==='pending'?'<button class="btn btn-p btn-sm" onclick="openPaySalModal('+u.id+','+month+','+year+')">Paid</button>':sr&&sr.status==='approved'?'<span style="font-size:12px;color:#16a34a;font-weight:600">&#10003; '+ru(sr.paidAmount||sr.net)+'</span>':'&mdash;')+'</td></tr>';
     }).join('')
     +'</tbody></table></div>';
 }
@@ -1421,12 +1427,19 @@ function runPayroll(){
   });
   setS(sal);refreshSal();toast('Payroll generated');
 }
-function approveSal(uid,month,year){
-  var sal=getS();var i=sal.findIndex(function(s){return s.userId===uid&&s.month===month&&s.year===year;});
-  if(i>=0){sal[i].status='approved';setS(sal);}
+function openPaySalModal(uid,month,year){
   var c=calcSal(uid,month,year);
-  pushNotif(uid,'Salary Credited','Your salary of '+ru(c.net)+' for '+mn(month)+' '+year+' has been processed.','success');
-  refreshSal();toast('Salary approved');
+  var u=getU().filter(function(x){return x.id===uid;})[0];
+  var html='<div style="padding:20px">'    +'<h2 style="font-size:16px;font-weight:700;margin-bottom:6px">Mark Salary as Paid</h2>'    +'<p style="font-size:13px;color:#64748b;margin-bottom:16px">'+(u?u.name:'Employee')+' &mdash; '+mn(month)+' '+year+'</p>'    +'<div style="margin-bottom:12px">'    +'<label class="label">Net Pay (Calculated)</label>'    +'<div style="font-size:18px;font-weight:700;color:#0f766e;margin-bottom:12px">'+ru(c.net)+'</div>'    +'<label class="label">Paid Amount <span style="color:#ef4444">*</span></label>'    +'<input class="input" type="number" id="payAmt" placeholder="Enter amount paid" value="'+Math.round(c.net)+'"/>'    +'</div>'    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">'    +'<button class="btn btn-o" onclick="closeModal()">Cancel</button>'    +'<button class="btn btn-p" onclick="confirmPaySal('+uid+','+month+','+year+')">Confirm Payment</button>'    +'</div></div>';
+  openModal(html);
+}
+function confirmPaySal(uid,month,year){
+  var amt=Number(document.getElementById('payAmt').value);
+  if(!amt||amt<=0){toast('Enter valid amount');return;}
+  var sal=getS();var i=sal.findIndex(function(s){return s.userId===uid&&s.month===month&&s.year===year;});
+  if(i>=0){sal[i].status='approved';sal[i].paidAmount=amt;sal[i].paidAt=new Date().toISOString();setS(sal);}
+  pushNotif(uid,'Salary Paid','Your salary of '+ru(amt)+' for '+mn(month)+' '+year+' has been paid.','success');
+  closeModal();refreshSal();toast('Salary marked as paid');
 }
 
 // ============ ADMIN HOLIDAYS ============
