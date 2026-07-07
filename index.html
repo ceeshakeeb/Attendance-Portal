@@ -485,7 +485,7 @@ var ANAV=[
   {l:'Manage Leaves',i:'file',p:'/admin/leave'},
   {l:'Vouchers',i:'voucher',p:'/admin/voucher'},
   {l:'Tasks',i:'list',p:'/tasks'},
-  {l:'Service Reports',i:'file',p:'/admin/service'},
+  {l:'Work Completion',i:'file',p:'/admin/service'},
   {l:'Purchase Invoices',i:'invoice',p:'/admin/purchase'},
   {l:'Staff Directory',i:'users',p:'/admin/staff'},
   {l:'Payroll',i:'dollar',p:'/admin/salary'},
@@ -937,6 +937,8 @@ function submitDayLeave(ds){
 }
 
 // ============ ADMIN DASHBOARD ============
+var dashSalMo=null,dashSalYr=null;
+function filterDashSal(m,y){dashSalMo=Number(m);dashSalYr=Number(y);go('/admin/dash');}
 function pgAdminDash(){
   var att=getA(),leaves=getL();
   var pA=att.filter(function(a){return a.status==='pending';}).length;
@@ -947,10 +949,12 @@ function pgAdminDash(){
   var allV=getV(),allAdv=getADV();
   var vPending=allV.filter(function(v){return v.status==='pending';});
   var vApproved=allV.filter(function(v){return v.status==='approved';});
+  var vTotalAmt=allV.reduce(function(s,v){return s+Number(v.amount);},0);
   var vUnpaidAmt=vPending.concat(vApproved).reduce(function(s,v){return s+Number(v.amount);},0);
   var advTotalPaid=allAdv.reduce(function(s,a){return s+Number(a.amount);},0);
   var vOutstanding=Math.max(0,vUnpaidAmt-advTotalPaid);
-  var dNow=new Date(),dMo=dNow.getMonth()+1,dYr=dNow.getFullYear();
+  var dNow=new Date();
+  var dMo=dashSalMo||(dNow.getMonth()+1),dYr=dashSalYr||dNow.getFullYear();
   var salThisMo=getS().filter(function(s){return s.month===dMo&&s.year===dYr;});
   var salPaid=salThisMo.filter(function(s){return s.status==='approved';});
   var salPending=salThisMo.filter(function(s){return s.status==='pending';});
@@ -1010,22 +1014,32 @@ function pgAdminDash(){
     }).join('')
     +'</div></div>'
     +'<div class="g2" style="margin-top:20px">'
-    +'<div class="card" style="cursor:pointer" onclick="go(\'/admin/voucher\')">'
-    +'<h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Voucher Summary</h3>'
+    +'<div class="card">'
+    +'<h3 style="font-weight:600;margin-bottom:14px;font-size:14px;cursor:pointer" onclick="go(\'/admin/voucher\')">Voucher Summary</h3>'
     +'<div style="display:flex;flex-direction:column;gap:10px">'
-    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#fff7ed;border-radius:8px"><span style="font-size:12px;color:#92400e">Pending Review</span><strong style="color:#d97706">'+vPending.length+'</strong></div>'
-    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#eff6ff;border-radius:8px"><span style="font-size:12px;color:#1d4ed8">Approved &middot; Unpaid</span><strong style="color:#2563eb">'+vApproved.length+'</strong></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f1f5f9;border-radius:8px"><span style="font-size:12px;color:#334155">Total Submitted</span><strong>'+ru(vTotalAmt)+' <span style="font-weight:400;color:#94a3b8">('+allV.length+')</span></strong></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#fff7ed;border-radius:8px"><span style="font-size:12px;color:#92400e">Pending Approval</span><strong style="color:#d97706">'+vPending.length+'</strong></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px;background:#eff6ff;border-radius:8px"><span style="font-size:12px;color:#1d4ed8">Approved &middot; Pending Payment</span><strong style="color:#2563eb">'+vApproved.length+'</strong></div>'
     +'<div style="display:flex;justify-content:space-between;padding:10px;background:#faf5ff;border-radius:8px"><span style="font-size:12px;color:#6b21a8">Total Outstanding</span><strong style="color:#7e22ce">'+ru(vOutstanding)+'</strong></div>'
-    +'</div><div style="font-size:11px;margin-top:10px;color:#0f766e;text-decoration:underline">View vouchers &rarr;</div>'
+    +'</div><div style="font-size:11px;margin-top:10px;color:#0f766e;text-decoration:underline;cursor:pointer" onclick="go(\'/admin/voucher\')">View vouchers &rarr;</div>'
     +'</div>'
-    +'<div class="card" style="cursor:pointer" onclick="go(\'/admin/salary\')">'
-    +'<h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Payroll Summary &mdash; '+mn(dMo)+' '+dYr+'</h3>'
+    +'<div class="card">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">'
+    +'<h3 style="font-weight:600;font-size:14px;cursor:pointer" onclick="go(\'/admin/salary\')">Payroll Summary</h3>'
+    +'<div style="display:flex;gap:6px">'
+    +'<select class="input" style="width:100px;padding:5px 8px;font-size:12px" onchange="filterDashSal(this.value,document.getElementById(\'dashSalYrSel\').value)" id="dashSalMoSel">'
+    +[0,1,2,3,4,5,6,7,8,9,10,11].map(function(i){return '<option value="'+(i+1)+'"'+(i+1===dMo?' selected':'')+'>'+mn(i+1)+'</option>';}).join('')
+    +'</select>'
+    +'<select class="input" style="width:80px;padding:5px 8px;font-size:12px" onchange="filterDashSal(document.getElementById(\'dashSalMoSel\').value,this.value)" id="dashSalYrSel">'
+    +[2023,2024,2025,2026].map(function(y){return '<option value="'+y+'"'+(y===dYr?' selected':'')+'>'+y+'</option>';}).join('')
+    +'</select>'
+    +'</div></div>'
     +'<div style="display:flex;flex-direction:column;gap:10px">'
     +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:8px"><span style="font-size:12px;color:#64748b">Not Run Yet</span><strong>'+(salNotRun>0?salNotRun:0)+'</strong></div>'
     +'<div style="display:flex;justify-content:space-between;padding:10px;background:#fff7ed;border-radius:8px"><span style="font-size:12px;color:#92400e">Pending Payment</span><strong style="color:#d97706">'+salPending.length+'</strong></div>'
     +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f0fdf4;border-radius:8px"><span style="font-size:12px;color:#166534">Paid</span><strong style="color:#16a34a">'+salPaid.length+'</strong></div>'
     +'<div style="display:flex;justify-content:space-between;padding:10px;background:#f1f5f9;border-radius:8px"><span style="font-size:12px;color:#334155">Total Net (Run)</span><strong>'+ru(salNetTotal)+'</strong></div>'
-    +'</div><div style="font-size:11px;margin-top:10px;color:#0f766e;text-decoration:underline">View payroll &rarr;</div>'
+    +'</div><div style="font-size:11px;margin-top:10px;color:#0f766e;text-decoration:underline;cursor:pointer" onclick="go(\'/admin/salary\')">View payroll &rarr;</div>'
     +'</div>'
     +'</div></div>';
 }
@@ -1998,7 +2012,7 @@ function pgAdminService(){
   var works=getW().sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
   var users=getU();
   var userMap={};users.forEach(function(u){userMap[u.id]=u.name;});
-  var html='<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Service Reports</h1><p style="color:#64748b;font-size:13px">All employee work completion reports for invoicing.</p></div>'
+  var html='<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Work Completion</h1><p style="color:#64748b;font-size:13px">All employee work completion reports for invoicing.</p></div>'
     +'<div class="card">';
   if(works.length===0){
     html+='<div style="text-align:center;color:#94a3b8;padding:32px">No service reports submitted yet</div>';
