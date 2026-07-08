@@ -765,16 +765,38 @@ function calcSal(uid,month,year){
 }
 function leaveBal(uid){
   var leaves=getL().filter(function(l){return l.userId===uid&&l.status==='approved';});
-  var cu=0,su=0,co=0,pu=0;
+  var su=0,co=0,pu=0;
   leaves.forEach(function(l){
     var d=Math.round((new Date(l.endDate)-new Date(l.startDate))/86400000)+1;
-    if(l.type==='casual')cu+=d;
-    else if(l.type==='sick')su+=d;
+    if(l.type==='sick')su+=d;
     else if(l.type==='comp_off')co+=d;
     else if(l.type==='personal')pu+=d;
   });
   var earned=getA().filter(function(a){return a.userId===uid&&a.status==='approved'&&(a.type==='sunday_work'||a.type==='holiday_work');}).length;
-  return{casUsed:cu,casLeft:Math.max(0,12-cu),sikUsed:su,compEarned:earned,compLeft:Math.max(0,earned-co),personalUsed:pu};
+  return{sikUsed:su,sikLeft:Math.max(0,2-su),compEarned:earned,compLeft:Math.max(0,earned-co),personalUsed:pu};
+}
+
+// ============ CROSS-CHECK HELPERS (leave vs attendance conflicts) ============
+function leaveOnDate(uid,ds){
+  // returns a non-rejected leave record that covers date ds, or null
+  return getL().filter(function(l){return l.userId===uid&&l.status!=='rejected'&&l.startDate<=ds&&ds<=l.endDate;})[0]||null;
+}
+function attOnDate(uid,ds){
+  // returns a non-rejected attendance record for date ds, or null
+  return getA().filter(function(a){return a.userId===uid&&a.date===ds&&a.status!=='rejected';})[0]||null;
+}
+function rangeConflict(uid,start,end){
+  // walks every date from start..end, returns {date,reason} of first conflict found, or null
+  var d=new Date(start+'T00:00:00');var e=new Date(end+'T00:00:00');
+  while(d<=e){
+    var ds=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    var lv=leaveOnDate(uid,ds);
+    if(lv)return{date:ds,reason:'Leave already applied'};
+    var at=attOnDate(uid,ds);
+    if(at)return{date:ds,reason:'Attendance already logged'};
+    d.setDate(d.getDate()+1);
+  }
+  return null;
 }
 
 // ============ CALENDAR ============
@@ -785,8 +807,10 @@ function renderCal(){
   var titleEl=document.getElementById('calTitle');
   if(titleEl)titleEl.textContent=mn(m)+' '+y;
   var hols=getH();var att=getA().filter(function(a){return a.userId===CU.id;});
+  var leaves=getL().filter(function(l){return l.userId===CU.id&&l.status!=='rejected';});
   var aMap={};att.forEach(function(a){aMap[a.date]=a;});
   var hMap={};hols.forEach(function(h){hMap[h.date]=h.name;});
+  var lTag={casual:'C.Leave',sick:'Sick',comp_off:'CompOff',personal:'LOP'};
   var todayStr=td();
   var first=new Date(y,m-1,1);
   var lastD=new Date(y,m,0).getDate();
@@ -798,20 +822,28 @@ function renderCal(){
     var isSun=new Date(ds+'T00:00:00').getDay()===0;
     var isHol=!!hMap[ds];
     var rec=aMap[ds];
+    var leaveRec=leaves.filter(function(l){return l.startDate<=ds&&ds<=l.endDate;})[0];
     var isPast=ds<todayStr;
     var isToday=ds===todayStr;
     var isFuture=ds>todayStr;
     var cls='cal-day';
-    var extra='';
+    var tagTxt='';var tagTitle='';
     if(isToday)cls+=' cal-today';
     var canClick=false;
     var clickable='';
-    if(rec){
-      if(rec.status==='pending')cls+=' cal-pending';
-      else if(rec.status==='rejected')cls+=' cal-miss';
+    if(leaveRec){
+      cls+=' cal-leave';
+      tagTxt=(lTag[leaveRec.type]||'Leave')+(leaveRec.status==='pending'?'*':'');
+      tagTitle=(lTag[leaveRec.type]||'Leave')+' — '+(leaveRec.status==='pending'?'Submitted, pending approval':'Approved');
+      canClick=true;
+    } else if(rec){
+      if(rec.status==='pending'){cls+=' cal-pending';tagTxt='Pending';tagTitle=rec.type.replace(/_/g,' ')+' — Submitted, pending approval';}
+      else if(rec.status==='rejected'){cls+=' cal-miss';tagTxt='Rejected';tagTitle='Rejected — you may resubmit';}
       else{
         var tc={present:'cal-present',half_day:'cal-half',absent:'cal-absent',sunday_work:'cal-swork',holiday_work:'cal-hwork',leave:'cal-leave'};
         cls+=' '+(tc[rec.type]||'cal-present');
+        var tl={present:'Present',half_day:'Half Day',absent:'Absent',sunday_work:'Sun Work',holiday_work:'Hol Work',leave:'Leave'};
+        tagTxt=tl[rec.type]||'Present';tagTitle=tagTxt+' — Approved';
       }
       canClick=true;
     } else if(isFuture){
@@ -821,14 +853,15 @@ function renderCal(){
     } else if(isToday){
       if(isSun){cls+=' cal-sun';canClick=true;}
       else if(isHol){cls+=' cal-holiday';canClick=true;}
-      else{cls+=' cal-today-log';canClick=true;}
+      else{cls+=' cal-today-log';canClick=true;tagTxt='Not Sub';tagTitle='Not submitted yet';}
     } else {
       if(isSun){cls+=' cal-sun';canClick=true;}
       else if(isHol){cls+=' cal-holiday';canClick=true;}
-      else{cls+=' cal-miss';canClick=true;}
+      else{cls+=' cal-miss';canClick=true;tagTxt='Not Sub';tagTitle='Not submitted';}
     }
     if(canClick)clickable=' onclick="openDay(\''+ds+'\')"';
-    html+='<div class="'+cls+'"'+clickable+' title="'+d+(isHol?' - '+hMap[ds]:'')+'"><span>'+d+'</span>'+(isSun&&!rec?'<span style="font-size:8px;opacity:.6">off</span>':'')+'</div>';
+    var titleAttr=d+(isHol?' - '+hMap[ds]:'')+(tagTitle?' — '+tagTitle:'');
+    html+='<div class="'+cls+'"'+clickable+' title="'+titleAttr+'"><span>'+d+'</span>'+(tagTxt?'<span style="font-size:7px;opacity:.75;line-height:1;margin-top:1px">'+tagTxt+'</span>':(isSun&&!rec?'<span style="font-size:8px;opacity:.6">off</span>':''))+'</div>';
   }
   el.innerHTML=html;
 }
@@ -838,20 +871,38 @@ function calNext(){calM.m++;if(calM.m>12){calM.m=1;calM.y++;}renderCal();}
 
 function openDay(ds){
   var rec=getA().filter(function(a){return a.userId===CU.id&&a.date===ds;})[0];
+  var leaveRec=leaveOnDate(CU.id,ds);
   var hols=getH();
   var holName=hols.filter(function(h){return h.date===ds;}).map(function(h){return h.name;})[0]||'';
   var isSun=new Date(ds+'T00:00:00').getDay()===0;
   var bal=leaveBal(CU.id);
   var dLabel=new Date(ds+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  var isApproved=rec&&rec.status==='approved';
-  var bg=isApproved?'#f0fdf4':rec?'#ffedd5':'#fefce8';
-  var tc=isApproved?'#166534':rec?'#c2410c':'#854d0e';
-  var stLbl=isApproved?'Approved':rec?rec.status==='rejected'?'Rejected':'Pending':'Not Logged';
+  var alreadySubmitted=(rec&&rec.status!=='rejected')||!!leaveRec;
+  var isApproved=(rec&&rec.status==='approved')||(leaveRec&&leaveRec.status==='approved');
+  var bg=isApproved?'#f0fdf4':alreadySubmitted?'#ffedd5':'#fefce8';
+  var tc=isApproved?'#166534':alreadySubmitted?'#c2410c':'#854d0e';
+  var stLbl=leaveRec?(leaveRec.status==='approved'?'Leave Approved':'Leave Pending'):rec?(isApproved?'Approved':rec.status==='rejected'?'Rejected':'Pending'):'Not Logged';
   var body='';
-  if(isApproved){
+  if(leaveRec){
+    body='<div style="font-size:13px;padding:0 18px 18px">'
+      +'<div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:12px;font-size:12px;color:#1e40af;font-weight:600">&#9888; ALREADY SUBMITTED — leave covers this date</div>'
+      +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">Type</span>'+badge(leaveRec.type)+'</div>'
+      +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">Duration</span><strong>'+fd(leaveRec.startDate)+' — '+fd(leaveRec.endDate)+'</strong></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">Status</span>'+badge(leaveRec.status)+'</div>'
+      +(leaveRec.reason?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:#64748b">Reason</span><span>'+leaveRec.reason+'</span></div>':'')
+      +'</div>'
+      +'<div style="padding:0 18px 18px"><button class="btn btn-o" onclick="closeModal()" style="width:100%;justify-content:center">Close</button></div>';
+  } else if(isApproved){
     body='<div style="font-size:13px;padding:0 18px 18px">'
       +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">Type</span><strong>'+rec.type.replace(/_/g,' ')+'</strong></div>'
       +(rec.timeIn?'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">Check-in</span><strong>'+rec.timeIn+'</strong></div>':'')+(rec.timeOut?'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">Check-out</span><strong>'+rec.timeOut+'</strong></div>':'')+(rec.notes?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:#64748b">Work Details</span><span>'+rec.notes+'</span></div>':'')
+      +'</div>'
+      +'<div style="padding:0 18px 18px"><button class="btn btn-o" onclick="closeModal()" style="width:100%;justify-content:center">Close</button></div>';
+  } else if(rec&&rec.status==='pending'){
+    body='<div style="font-size:13px;padding:0 18px 18px">'
+      +'<div style="padding:10px 12px;background:#ffedd5;border:1px solid #fdba74;border-radius:8px;margin-bottom:12px;font-size:12px;color:#c2410c;font-weight:600">&#9888; ALREADY SUBMITTED — awaiting admin approval</div>'
+      +'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">Type</span><strong>'+rec.type.replace(/_/g,' ')+'</strong></div>'
+      +(rec.notes?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:#64748b">Work Details</span><span>'+rec.notes+'</span></div>':'')
       +'</div>'
       +'<div style="padding:0 18px 18px"><button class="btn btn-o" onclick="closeModal()" style="width:100%;justify-content:center">Close</button></div>';
   } else {
@@ -875,11 +926,12 @@ function openDay(ds){
       +'</div>'
       +'<div id="dtl" style="display:none">'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
-      +'<span class="badge bg-blue">Casual: '+bal.casLeft+' left</span>'
+      +'<span class="badge bg-red">Sick: '+bal.sikLeft+' left</span>'
       +'<span class="badge bg-teal">Comp Off: '+bal.compLeft+'</span>'
       +'</div>'
       +'<div style="margin-bottom:10px"><label class="label">Leave Type</label>'
-      +'<select class="input" id="day_ltype"><option value="casual">Casual Leave</option><option value="sick">Sick Leave</option><option value="comp_off">Comp Off</option><option value="personal">Personal (LOP)</option></select></div>'
+      +'<select class="input" id="day_ltype" onchange="dayLtypeChanged()"><option value="sick">Sick Leave</option><option value="comp_off">Comp Off</option><option value="personal">Personal (LOP)</option></select></div>'
+      +'<div id="day_personal_warn" style="display:none;padding:8px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font-size:11px;color:#92400e;margin-bottom:10px">&#9888; You have Comp Off available. Please clear your Comp Off before applying Personal Leave (LOP).</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
       +'<div><label class="label">From</label><input class="input" type="date" id="day_lfrom" value="'+ds+'" readonly style="background:#f8fafc"/></div>'
       +'<div><label class="label">To</label><input class="input" type="date" id="day_lto" value="'+ds+'" min="'+ds+'"/></div>'
@@ -906,16 +958,25 @@ function dayTab(t){
   document.getElementById('dt_a').style.cssText='flex:1;padding:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:'+(t==='a'?'#0f766e':'#fff')+';color:'+(t==='a'?'#fff':'#64748b');
   document.getElementById('dt_l').style.cssText='flex:1;padding:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:'+(t==='l'?'#0f766e':'#fff')+';color:'+(t==='l'?'#fff':'#64748b');
 }
+function dayLtypeChanged(){
+  var sel=document.getElementById('day_ltype');
+  var warn=document.getElementById('day_personal_warn');
+  if(!sel||!warn)return;
+  var bal=leaveBal(CU.id);
+  warn.style.display=(sel.value==='personal'&&bal.compLeft>0)?'block':'none';
+}
 function submitDayAtt(ds){
   var type=document.getElementById('day_type').value;
   var note=document.getElementById('day_note').value.trim();
   var tin=document.getElementById('day_tin')?document.getElementById('day_tin').value:'09:00';
   var tout=document.getElementById('day_tout')?document.getElementById('day_tout').value:'18:00';
   if(!tin||!tout){toast('Time required','err');return;}
+  var lv=leaveOnDate(CU.id,ds);
+  if(lv){toast('ALREADY SUBMITTED — Leave already applied for this date','err');return;}
   var att=getA();
   var existingCalIdx=att.findIndex(function(a){return a.userId===CU.id&&a.date===ds;});
   if(existingCalIdx>=0){
-    if(att[existingCalIdx].status!=='rejected'){toast('Already submitted for this date','err');return;}
+    if(att[existingCalIdx].status!=='rejected'){toast('ALREADY SUBMITTED — Attendance already logged for this date','err');return;}
     att[existingCalIdx]={id:att[existingCalIdx].id,userId:CU.id,date:ds,type:type,timeIn:tin,timeOut:tout,notes:note,status:'pending',createdAt:new Date().toISOString()};
   } else {
     att.push({id:nid(att),userId:CU.id,date:ds,type:type,timeIn:tin,timeOut:tout,notes:note,status:'pending',createdAt:new Date().toISOString()});
@@ -929,8 +990,13 @@ function submitDayLeave(ds){
   var reason=document.getElementById('day_lreason').value.trim();
   if(!reason){toast('Reason required','err');return;}
   if(lto<ds){toast('End date must be on or after start','err');return;}
+  var conflict=rangeConflict(CU.id,ds,lto);
+  if(conflict){toast('ALREADY SUBMITTED — '+conflict.reason+' on '+fd(conflict.date),'err');return;}
   var leaves=getL();
   var days=Math.round((new Date(lto)-new Date(ds))/86400000)+1;
+  var bal=leaveBal(CU.id);
+  if(ltype==='personal'&&bal.compLeft>0){toast('You have '+bal.compLeft+' Comp Off day(s) available. Please clear your Comp Off before applying Personal Leave (LOP).','err');return;}
+  if(ltype==='sick'&&days>bal.sikLeft){toast('Insufficient Sick Leave balance — '+bal.sikLeft+' day(s) left.','err');return;}
   leaves.push({id:nid(leaves),userId:CU.id,type:ltype,startDate:ds,endDate:lto,days:days,reason:reason,status:'pending',createdAt:new Date().toISOString()});
   setL(leaves);closeModal();toast('Leave applied!');
   if(CP==='/dashboard')go('/dashboard');
@@ -949,9 +1015,9 @@ function pgAdminDash(){
   var allV=getV(),allAdv=getADV();
   var vPending=allV.filter(function(v){return v.status==='pending';});
   var vApproved=allV.filter(function(v){return v.status==='approved';});
-  var vTotalAmt=allV.reduce(function(s,v){return s+Number(v.amount);},0);
-  var vUnpaidAmt=vPending.concat(vApproved).reduce(function(s,v){return s+Number(v.amount);},0);
-  var advTotalPaid=allAdv.reduce(function(s,a){return s+Number(a.amount);},0);
+  var vTotalAmt=allV.reduce(function(s,v){return s+Number(v.amount||0);},0);
+  var vUnpaidAmt=vPending.concat(vApproved).reduce(function(s,v){return s+Number(v.amount||0);},0);
+  var advTotalPaid=allAdv.reduce(function(s,a){return s+Number(a.amount||0);},0);
   var vOutstanding=Math.max(0,vUnpaidAmt-advTotalPaid);
   var dNow=new Date();
   var dMo=dashSalMo||(dNow.getMonth()+1),dYr=dashSalYr||dNow.getFullYear();
@@ -992,7 +1058,7 @@ function pgAdminDash(){
     +'</div>'
     +'<div class="g2">'
     +'<div class="card"><h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Pending Attendance</h3>'
-    +att.filter(function(a){return a.status==='pending';}).slice(0,5).map(function(a){
+    +(att.filter(function(a){return a.status==='pending';}).slice(0,5).map(function(a){
       var u=getU().filter(function(x){return x.id===a.userId;})[0];
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f1f5f9">'
         +'<div><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div>'
@@ -1001,7 +1067,7 @@ function pgAdminDash(){
         +'<button class="btn btn-s btn-sm" onclick="approveAtt('+a.id+')">&#10003;</button>'
         +'<button class="btn btn-d btn-sm" onclick="rejectAtt('+a.id+')">&#10005;</button>'
         +'</div></div>';
-    }).join('')||'<p style="color:#94a3b8;font-size:13px">No pending requests</p>'
+    }).join('')||'<p style="color:#94a3b8;font-size:13px">No pending requests</p>')
     +'</div>'
     +'<div class="card"><h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Staff Today</h3>'
     +staff.map(function(u){
@@ -1182,9 +1248,9 @@ function computeAdvBalances(voucherList,advTotal){
       map[v.id]={balance:0,deducted:0};
       return;
     }
-    var ded=Math.min(remaining,Number(v.amount));
+    var ded=Math.min(remaining,Number(v.amount||0));
     remaining-=ded;
-    map[v.id]={balance:Number(v.amount)-ded,deducted:ded};
+    map[v.id]={balance:Number(v.amount||0)-ded,deducted:ded};
   });
   return map;
 }
@@ -1198,13 +1264,13 @@ function pgAdminVoucher(){
   var users=getU();
   var emps=users.filter(function(u){return u.role==='employee';});
   var vSet=voucherFilterEmp?allVouchers.filter(function(v){return String(v.userId)===String(voucherFilterEmp);}):allVouchers;
-  var submitted=vSet.reduce(function(s,v){return s+Number(v.amount);},0);
-  var paid=vSet.filter(function(v){return v.status==='paid';}).reduce(function(s,v){return s+Number(v.amount);},0);
-  var pendingAmt=vSet.filter(function(v){return v.status==='pending';}).reduce(function(s,v){return s+Number(v.amount);},0);
-  var approvedAmt=vSet.filter(function(v){return v.status==='approved';}).reduce(function(s,v){return s+Number(v.amount);},0);
+  var submitted=vSet.reduce(function(s,v){return s+Number(v.amount||0);},0);
+  var paid=vSet.filter(function(v){return v.status==='paid';}).reduce(function(s,v){return s+Number(v.amount||0);},0);
+  var pendingAmt=vSet.filter(function(v){return v.status==='pending';}).reduce(function(s,v){return s+Number(v.amount||0);},0);
+  var approvedAmt=vSet.filter(function(v){return v.status==='approved';}).reduce(function(s,v){return s+Number(v.amount||0);},0);
   var unpaidAmt=pendingAmt+approvedAmt;
   var rejectedCount=vSet.filter(function(v){return v.status==='rejected';}).length;
-  var totalAdvPaid=advances.reduce(function(s,a){return s+Number(a.amount);},0);
+  var totalAdvPaid=advances.reduce(function(s,a){return s+Number(a.amount||0);},0);
   var totalOutstanding=Math.max(0,unpaidAmt-totalAdvPaid);
   return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Vouchers &amp; Advances</h1><p style="color:#64748b;font-size:13px">Review, approve, pay employee vouchers, and manage advances.</p></div>'
     +'<div class="card" style="margin-bottom:16px;max-width:320px"><label class="label">Filter by Employee</label>'
@@ -1230,13 +1296,13 @@ function pgAdminVoucher(){
       allVouchers.forEach(function(v){(byUser[v.userId]=byUser[v.userId]||[]).push(v);});
       var balMap={};
       Object.keys(byUser).forEach(function(uid){
-        var advTotal=allAdv.filter(function(a){return String(a.userId)===String(uid);}).reduce(function(s,a){return s+Number(a.amount);},0);
+        var advTotal=allAdv.filter(function(a){return String(a.userId)===String(uid);}).reduce(function(s,a){return s+Number(a.amount||0);},0);
         var m=computeAdvBalances(byUser[uid],advTotal);
         Object.keys(m).forEach(function(k){balMap[k]=m[k];});
       });
       return vouchers.map(function(v){
         var u=users.filter(function(x){return x.id===v.userId;})[0];
-        var bal=balMap[v.id]||{balance:Number(v.amount),deducted:0};
+        var bal=balMap[v.id]||{balance:Number(v.amount||0),deducted:0};
         return '<tr>'
           +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div></td>'
           +'<td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td>'
@@ -1657,7 +1723,7 @@ function pgEmpDash(){
     +'<div class="g4" style="margin-bottom:16px">'
     +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#9989;</div><div style="font-size:26px;font-weight:700;color:#16a34a">'+present+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Present</div><div style="font-size:10px;color:#94a3b8">This month</div></div>'
     +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#fffbeb;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#8987;</div><div style="font-size:26px;font-weight:700;color:#d97706">'+pending+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Pending</div><div style="font-size:10px;color:#94a3b8">Awaiting approval</div></div>'
-    +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#128197;</div><div style="font-size:26px;font-weight:700;color:#2563eb">'+bal.casLeft+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Casual Leave</div><div style="font-size:10px;color:#94a3b8">Remaining</div></div>'
+    +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#127958;</div><div style="font-size:26px;font-weight:700;color:#dc2626">'+bal.sikLeft+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Sick Leave</div><div style="font-size:10px;color:#94a3b8">Remaining (of 2)</div></div>'
     +'<div class="stat-card"><div style="width:28px;height:28px;border-radius:8px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px">&#128260;</div><div style="font-size:26px;font-weight:700;color:#7c3aed">'+bal.compLeft+'</div><div style="font-size:11px;font-weight:600;margin-top:2px">Comp Off</div><div style="font-size:10px;color:#94a3b8">Available</div></div>'
     +'</div>'
     +'<div class="card" style="margin-bottom:16px">'
@@ -1680,7 +1746,7 @@ function pgEmpDash(){
     +'</div>'
     +'<div class="g2" style="margin-bottom:12px">'
     +'<div class="card" style="padding:16px"><h3 style="font-weight:600;font-size:13px;margin-bottom:12px">Leave Balance</h3>'
-    +[{l:'&#127958; Casual',used:bal.casUsed,total:12,c:'#2563eb'},{l:'&#129298; Sick',used:bal.sikUsed,total:null,c:'#dc2626'},{l:'&#128260; Comp Off',used:null,total:bal.compLeft,c:'#7c3aed'}]
+    +[{l:'&#127958; Sick',used:bal.sikUsed,total:2,c:'#dc2626'},{l:'&#128260; Comp Off',used:null,total:bal.compLeft,c:'#7c3aed'},{l:'&#128203; Personal (LOP)',used:bal.personalUsed,total:null,c:'#ea580c'}]
     .map(function(x){return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#64748b">'+x.l+'</span><span style="font-weight:600">'+(x.used!==null&&x.total!==null?x.used+'/'+x.total+' used':x.used!==null?x.used+' used':x.total+' avail')+'</span></div>'+(x.used!==null&&x.total!==null?'<div style="background:#f1f5f9;border-radius:99px;height:5px"><div style="background:'+x.c+';border-radius:99px;height:5px;width:'+Math.min(100,(x.used/x.total)*100)+'%"></div></div>':'')+'</div>';}).join('')
     +'</div>'
     +'<div class="card" style="padding:16px"><h3 style="font-weight:600;font-size:13px;margin-bottom:12px">Upcoming Holidays</h3>'
@@ -1719,10 +1785,12 @@ function submitAtt(){
   var tout=document.getElementById('a_tout')?document.getElementById('a_tout').value:'18:00';
   if(!date){toast('Select a date','err');return;}
   if(!tin||!tout){toast('Check-in and check-out time required','err');return;}
+  var lv=leaveOnDate(CU.id,date);
+  if(lv){toast('ALREADY SUBMITTED — Leave already applied for this date','err');return;}
   var att=getA();
   var existingIdx=att.findIndex(function(a){return a.userId===CU.id&&a.date===date;});
   if(existingIdx>=0){
-    if(att[existingIdx].status!=='rejected'){toast('Already submitted for this date','err');return;}
+    if(att[existingIdx].status!=='rejected'){toast('ALREADY SUBMITTED — Attendance already logged for this date','err');return;}
     // Replace rejected record with new submission
     att[existingIdx]={id:att[existingIdx].id,userId:CU.id,date:date,type:type,timeIn:tin,timeOut:tout,notes:notes,status:'pending',createdAt:new Date().toISOString()};
   } else {
@@ -1749,17 +1817,23 @@ function pgLeaveApply(){
     +'<div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Apply for Leave</h1><p style="color:#64748b;font-size:13px">Submit a leave request.</p></div>'
     +'<div class="card" style="margin-bottom:12px"><h3 style="font-weight:600;font-size:13px;margin-bottom:10px">Your Leave Balance</h3>'
     +'<div style="display:flex;gap:12px">'
-    +'<div style="text-align:center;flex:1;padding:10px;background:#eff6ff;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#2563eb">'+bal.casLeft+'</div><div style="font-size:10px;color:#64748b">Casual</div></div>'
-    +'<div style="text-align:center;flex:1;padding:10px;background:#fef9c3;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#d97706">&#8734;</div><div style="font-size:10px;color:#64748b">Sick</div></div>'
+    +'<div style="text-align:center;flex:1;padding:10px;background:#fef2f2;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#dc2626">'+bal.sikLeft+'</div><div style="font-size:10px;color:#64748b">Sick (of 2)</div></div>'
     +'<div style="text-align:center;flex:1;padding:10px;background:#f5f3ff;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#7c3aed">'+bal.compLeft+'</div><div style="font-size:10px;color:#64748b">Comp Off</div></div>'+'<div style="text-align:center;flex:1;padding:10px;background:#fff7ed;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#ea580c">'+bal.personalUsed+'</div><div style="font-size:10px;color:#64748b">LOP used</div></div>'
     +'</div></div>'
     +'<div class="card">'
-    +'<div style="margin-bottom:10px"><label class="label">Leave Type</label><select class="input" id="lt"><option value="casual">Casual Leave</option><option value="sick">Sick Leave</option><option value="comp_off">Comp Off</option></select></div>'
+    +(bal.compLeft>0?'<div id="lt_personal_warn" style="display:none;padding:10px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#92400e;margin-bottom:12px">&#9888; You have '+bal.compLeft+' Comp Off day(s) available. Please clear your Comp Off before applying Personal Leave (LOP).</div>':'')
+    +'<div style="margin-bottom:10px"><label class="label">Leave Type</label><select class="input" id="lt" onchange="ltChanged()"><option value="sick">Sick Leave</option><option value="comp_off">Comp Off</option><option value="personal">Personal (LOP)</option></select></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div><label class="label">From</label><input class="input" type="date" id="lf" onchange="updDays()"/></div><div><label class="label">To</label><input class="input" type="date" id="le" onchange="updDays()"/></div></div>'
     +'<div id="ldur" style="display:none;padding:8px;background:#f1f5f9;border-radius:8px;text-align:center;font-size:12px;font-weight:600;margin-bottom:10px"></div>'
     +'<div style="margin-bottom:14px"><label class="label">Reason</label><textarea class="input" id="lr" rows="3" placeholder="Reason..."></textarea></div>'
     +'<button class="btn btn-p" onclick="submitLeave()" style="width:100%;justify-content:center">Submit Leave Request</button>'
     +'</div></div>';
+}
+function ltChanged(){
+  var sel=document.getElementById('lt');
+  var warn=document.getElementById('lt_personal_warn');
+  if(!sel||!warn)return;
+  warn.style.display=sel.value==='personal'?'block':'none';
 }
 function updDays(){
   var s=document.getElementById('lf');var e=document.getElementById('le');var d=document.getElementById('ldur');
@@ -1772,8 +1846,13 @@ function submitLeave(){
   var reason=document.getElementById('lr').value.trim();
   if(!start||!end||!reason){toast('All fields required','err');return;}
   if(start>end){toast('End must be after start','err');return;}
+  var conflict=rangeConflict(CU.id,start,end);
+  if(conflict){toast('ALREADY SUBMITTED — '+conflict.reason+' on '+fd(conflict.date),'err');return;}
   var leaves=getL();
   var days=Math.round((new Date(end)-new Date(start))/86400000)+1;
+  var bal=leaveBal(CU.id);
+  if(type==='personal'&&bal.compLeft>0){toast('You have '+bal.compLeft+' Comp Off day(s) available. Please clear your Comp Off before applying Personal Leave (LOP).','err');return;}
+  if(type==='sick'&&days>bal.sikLeft){toast('Insufficient Sick Leave balance — '+bal.sikLeft+' day(s) left.','err');return;}
   leaves.push({id:nid(leaves),userId:CU.id,type:type,startDate:start,endDate:end,days:days,reason:reason,status:'pending',createdAt:new Date().toISOString()});
   setL(leaves);go('/leave/history');toast('Leave request submitted!');
 }
@@ -2059,10 +2138,10 @@ function updateWorkStatus(workId,status){
 // ============ VOUCHERS (EMPLOYEE) ============
 function pgVoucher(){
   var vouchers=getV().filter(function(v){return v.userId===CU.id;}).sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
-  var submitted=vouchers.reduce(function(s,v){return s+Number(v.amount);},0);
-  var paid=vouchers.filter(function(v){return v.status==='paid';}).reduce(function(s,v){return s+Number(v.amount);},0);
-  var pending=vouchers.filter(function(v){return v.status==='pending'||v.status==='approved';}).reduce(function(s,v){return s+Number(v.amount);},0);
-  var advGiven=getADV().filter(function(a){return a.userId===CU.id;}).reduce(function(s,a){return s+Number(a.amount);},0);
+  var submitted=vouchers.reduce(function(s,v){return s+Number(v.amount||0);},0);
+  var paid=vouchers.filter(function(v){return v.status==='paid';}).reduce(function(s,v){return s+Number(v.amount||0);},0);
+  var pending=vouchers.filter(function(v){return v.status==='pending'||v.status==='approved';}).reduce(function(s,v){return s+Number(v.amount||0);},0);
+  var advGiven=getADV().filter(function(a){return a.userId===CU.id;}).reduce(function(s,a){return s+Number(a.amount||0);},0);
   var balAfterAdv=pending-advGiven;
   return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Vouchers</h1><p style="color:#64748b;font-size:13px">Submit expense vouchers and track their approval.</p></div>'
     +'<div class="g2" style="margin-bottom:16px">'
@@ -2093,7 +2172,7 @@ function pgVoucher(){
     (function(){
       var balMap=computeAdvBalances(vouchers,advGiven);
       return vouchers.map(function(v){
-        var bal=balMap[v.id]||{balance:Number(v.amount),deducted:0};
+        var bal=balMap[v.id]||{balance:Number(v.amount||0),deducted:0};
         return '<tr><td style="font-size:12px;color:#64748b">'+v.voucherNo+'</td><td>'+badge(v.category)+'</td><td style="font-size:12px;color:#64748b">'+(v.jobNumber||'—')+'</td><td>'+fd(v.date)+'</td><td style="font-weight:600">'+ru(v.amount)+'</td>'
           +(advGiven>0?'<td style="font-weight:600;color:#0284c7">'+ru(bal.balance)+(bal.deducted>0?' <span style="font-size:11px;color:#94a3b8">(-'+ru(bal.deducted)+')</span>':'')+'</td>':'')
           +'<td>'+badge(v.status)+'</td>'
