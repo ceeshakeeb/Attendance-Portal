@@ -259,7 +259,7 @@ tr:hover td{background:#f8fafc;}
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3NnzXWfDkDnLYFXY8J-dDT0aPoL8E2c0",
@@ -288,11 +288,19 @@ const FS = {
   'hr_task': 'hr_task'
 };
 
+// hr_pi (purchase invoices) and hr_work (service reports) each hold a base64 file
+// attachment per record. Storing the whole array in ONE shared Firestore document
+// meant everyone's records + attachments had to fit Firestore's ~1MB document cap
+// together — after a handful of attachments, every further save silently failed for
+// the whole company. These two now get their own Firestore document per record instead.
+const PER_RECORD = { 'hr_pi': 'pi_records', 'hr_work': 'work_records' };
+
 // In-memory cache — app reads here (sync), writes go to both cache + Firestore
 window._MC = {};
 
 window._fsLoad = async function(){
   for(var k in FS){
+    if(PER_RECORD[k]) continue;
     try{
       var snap = await getDoc(doc(_db, 'attendance_portal', FS[k]));
       if(snap.exists() && snap.data().value !== undefined){
@@ -300,13 +308,41 @@ window._fsLoad = async function(){
       }
     }catch(e){ console.warn('Firestore load fail:',k,e); }
   }
+  for(var k2 in PER_RECORD){
+    try{
+      var qsnap = await getDocs(collection(_db, PER_RECORD[k2]));
+      var arr = [];
+      qsnap.forEach(function(d){ arr.push(d.data()); });
+      window._MC[k2] = arr;
+    }catch(e){ console.warn('Firestore load fail:', k2, e); }
+  }
 };
 
 window._fsSave = function(k, v){
   window._MC[k] = v;
   if(!FS[k]) return;
+  if(PER_RECORD[k]) return; // hr_pi/hr_work sync per-record via _fsSaveRecord/_fsDeleteRecord instead
   setDoc(doc(_db, 'attendance_portal', FS[k]), {value: v}).catch(function(e){
     console.warn('Firestore save fail:',k,e);
+  });
+};
+
+// Save or delete ONE record for hr_pi/hr_work. Returns a Promise so callers can show
+// the user an error if the cloud sync fails — unlike the old shared-document approach,
+// a failure here only affects the one record being saved, not everyone else's data,
+// and the person submitting it is told instead of it failing silently in the console.
+window._fsSaveRecord = function(k, record){
+  if(!PER_RECORD[k]) return Promise.resolve();
+  return setDoc(doc(_db, PER_RECORD[k], String(record.id)), record).catch(function(e){
+    console.warn('Firestore record save fail:', k, e);
+    throw e;
+  });
+};
+window._fsDeleteRecord = function(k, id){
+  if(!PER_RECORD[k]) return Promise.resolve();
+  return deleteDoc(doc(_db, PER_RECORD[k], String(id))).catch(function(e){
+    console.warn('Firestore record delete fail:', k, e);
+    throw e;
   });
 };
 </script>
@@ -1459,7 +1495,7 @@ function pgAdminPurchase(){
         +'<td>'+fd(p.date)+'</td>'
         +'<td style="max-width:220px;font-size:12px;color:#475569">'+p.remarks+'</td>'
         +'<td style="font-size:11px;color:#64748b">'+p.fileName+'</td>'
-        +'<td><a href="'+p.fileData+'" download="'+p.fileName+'" class="btn btn-o btn-sm">View</a></td>'
+        +'<td><a href="'+p.fileData+'" target="_blank" rel="noopener" class="btn btn-o btn-sm" style="margin-right:4px">View</a><a href="'+p.fileData+'" download="'+p.fileName+'" class="btn btn-o btn-sm">Download</a></td>'
         +'<td><button class="btn btn-o btn-sm" style="margin-right:4px" onclick="editPurchaseModal('+p.id+')">Edit</button><button class="btn btn-d btn-sm" onclick="deletePurchase('+p.id+')">Delete</button></td>'
         +'</tr>';
     }).join(''))
@@ -1482,11 +1518,13 @@ function savePurchaseEdit(id){
   if(i<0)return;
   invs[i].date=date;invs[i].remarks=remarks;
   setPI(invs);closeModal();go(CP);toast('Invoice updated');
+  if(window._fsSaveRecord) window._fsSaveRecord('hr_pi', invs[i]).catch(function(){toast('Saved on this device, but cloud sync failed — check your connection','err');});
 }
 function deletePurchase(id){
   if(!confirm('Delete this purchase invoice? This cannot be undone.'))return;
   var invs=getPI().filter(function(p){return p.id!==id;});
   setPI(invs);go(CP);toast('Invoice deleted');
+  if(window._fsDeleteRecord) window._fsDeleteRecord('hr_pi', id).catch(function(){toast('Deleted on this device, but cloud sync failed — check your connection','err');});
 }
 
 // ============ ADMIN STAFF ============
@@ -2214,11 +2252,12 @@ function pgWorkSubmit(){
     html+='<div style="text-align:center;color:#94a3b8;padding:24px">No submissions yet</div>';
   } else {
     html+='<div style="overflow-x:auto"><table style="width:100%">'
-      +'<thead><tr><th style="font-size:11px">Date</th><th style="font-size:11px">Project</th><th style="font-size:11px">Description</th><th style="font-size:11px">Billable</th><th style="font-size:11px">File</th><th style="font-size:11px">Status</th></tr></thead><tbody>';
+      +'<thead><tr><th style="font-size:11px">Date</th><th style="font-size:11px">Project</th><th style="font-size:11px">Description</th><th style="font-size:11px">Billable</th><th style="font-size:11px">File</th><th style="font-size:11px">Status</th><th style="font-size:11px">Action</th></tr></thead><tbody>';
     works.forEach(function(w){
-      var hasFile=w.file?'<a href="#" onclick="downloadFile(this.dataset.id,event)" data-id="'+w.id+'" style="color:#0f766e">Download</a>':'—';
+      var hasFile=w.file?'<a href="#" onclick="downloadFile(this.dataset.id,event)" data-id="'+w.id+'" style="color:#0f766e;margin-right:8px">View</a><a href="#" onclick="downloadWorkFile(this.dataset.id,event)" data-id="'+w.id+'" style="color:#0f766e">Download</a>':'—';
+      var delBtn=w.status==='pending'?'<button class="btn btn-d btn-sm" onclick="deleteMyWork('+w.id+')">Delete</button>':'—';
       var billable=w.billableAmount?ru(w.billableAmount):'—';
-      html+='<tr><td style="font-size:12px">'+fd(w.date)+'</td><td style="font-size:12px">'+w.project+'</td><td style="font-size:12px;max-width:150px">'+w.description.substring(0,30)+'...</td><td style="font-size:12px">'+billable+'</td><td style="font-size:12px">'+hasFile+'</td><td>'+badge(w.status)+'</td></tr>';
+      html+='<tr><td style="font-size:12px">'+fd(w.date)+'</td><td style="font-size:12px">'+w.project+'</td><td style="font-size:12px;max-width:150px">'+w.description.substring(0,30)+'...</td><td style="font-size:12px">'+billable+'</td><td style="font-size:12px">'+hasFile+'</td><td>'+badge(w.status)+'</td><td style="font-size:12px">'+delBtn+'</td></tr>';
     });
     html+='</tbody></table>';
   }
@@ -2229,6 +2268,12 @@ function previewFile(){
   var file=document.getElementById('wc_file').files[0];
   var preview=document.getElementById('filePreview');
   if(file){
+    if(file.size>500*1024){
+      toast('File too large — max 500KB (compress the photo/PDF and try again)','err');
+      document.getElementById('wc_file').value='';
+      preview.textContent='';
+      return;
+    }
     preview.textContent='✓ '+file.name+' ('+Math.round(file.size/1024)+' KB)';
   } else {
     preview.textContent='';
@@ -2246,7 +2291,7 @@ function submitWork(){
   var reader=new FileReader();
   reader.onload=function(e){
     var works=getW();
-    works.push({
+    var rec={
       id:nid(works),
       userId:CU.id,
       project:proj,
@@ -2258,7 +2303,8 @@ function submitWork(){
       fileName:fileInput.files[0]?fileInput.files[0].name:'',
       status:'pending',
       createdAt:new Date().toISOString()
-    });
+    };
+    works.push(rec);
     setW(works);
     document.getElementById('wc_proj').value='';
     document.getElementById('wc_date').value=td();
@@ -2269,12 +2315,13 @@ function submitWork(){
     document.getElementById('filePreview').textContent='';
     go('/work/submit');
     toast('Work completion submitted for approval');
+    if(window._fsSaveRecord) window._fsSaveRecord('hr_work', rec).catch(function(){toast('Saved on this device, but failed to sync to the cloud — try again with a connection','err');});
   };
   if(fileInput.files[0]){
     reader.readAsDataURL(fileInput.files[0]);
   } else {
     var works=getW();
-    works.push({
+    var rec={
       id:nid(works),
       userId:CU.id,
       project:proj,
@@ -2286,7 +2333,8 @@ function submitWork(){
       fileName:'',
       status:'pending',
       createdAt:new Date().toISOString()
-    });
+    };
+    works.push(rec);
     setW(works);
     document.getElementById('wc_proj').value='';
     document.getElementById('wc_date').value=td();
@@ -2295,18 +2343,66 @@ function submitWork(){
     document.getElementById('wc_remarks').value='';
     go('/work/submit');
     toast('Work completion submitted for approval');
+    if(window._fsSaveRecord) window._fsSaveRecord('hr_work', rec).catch(function(){toast('Saved on this device, but failed to sync to the cloud — try again with a connection','err');});
   }
+}
+function dataUrlToBlob(dataUrl){
+  var parts=dataUrl.split(',');
+  var mimeMatch=parts[0].match(/:(.*?);/);
+  var mime=mimeMatch?mimeMatch[1]:'application/octet-stream';
+  var bstr=atob(parts[1]);
+  var n=bstr.length;
+  var u8=new Uint8Array(n);
+  while(n--){u8[n]=bstr.charCodeAt(n);}
+  return new Blob([u8],{type:mime});
+}
+function viewFileInTab(dataUrl){
+  try{
+    var url=URL.createObjectURL(dataUrlToBlob(dataUrl));
+    window.open(url,'_blank');
+  }catch(e){
+    window.open(dataUrl,'_blank');
+  }
+}
+function saveFileToDisk(dataUrl, filename){
+  var link=document.createElement('a');
+  link.href=dataUrl;
+  link.download=filename||'file';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+function deleteMyWork(id){
+  var works=getW();
+  var w=works.filter(function(x){return x.id===id;})[0];
+  if(!w||w.userId!==CU.id){toast('Not found','err');return;}
+  if(w.status!=='pending'){toast('Cannot delete a submission that has already been reviewed','err');return;}
+  if(!confirm('Delete this work completion submission? This cannot be undone.'))return;
+  works=works.filter(function(x){return x.id!==id;});
+  setW(works);
+  go('/work/submit');
+  toast('Submission deleted');
+  if(window._fsDeleteRecord) window._fsDeleteRecord('hr_work', id).catch(function(){toast('Deleted on this device, but cloud sync failed — check your connection','err');});
+}
+function adDeleteWork(id){
+  if(!confirm('Delete this work completion / service report? This cannot be undone.'))return;
+  var works=getW().filter(function(w){return w.id!==id;});
+  setW(works);
+  go('/admin/service');
+  toast('Submission deleted');
+  if(window._fsDeleteRecord) window._fsDeleteRecord('hr_work', id).catch(function(){toast('Deleted on this device, but cloud sync failed — check your connection','err');});
+}
+function downloadWorkFile(workId,evt){
+  evt.preventDefault();
+  var works=getW();
+  var work=works.filter(function(w){return w.id===parseInt(workId);})[0];
+  if(work&&work.file) saveFileToDisk(work.file, work.fileName||'service-report');
 }
 function downloadFile(workId,evt){
   evt.preventDefault();
   var works=getW();
   var work=works.filter(function(w){return w.id===parseInt(workId);})[0];
-  if(work&&work.file){
-    var link=document.createElement('a');
-    link.href=work.file;
-    link.download=work.fileName||'service-report';
-    link.click();
-  }
+  if(work&&work.file) viewFileInTab(work.file);
 }
 
 // ============ ADMIN SERVICE REPORTS ============
@@ -2425,28 +2521,30 @@ function pgAdminService(){
       +'<thead><tr><th style="font-size:11px">Employee</th><th style="font-size:11px">Date</th><th style="font-size:11px">Project</th><th style="font-size:11px">Description</th><th style="font-size:11px">Billable</th><th style="font-size:11px">Remarks</th><th style="font-size:11px">File</th><th style="font-size:11px">Status</th><th style="font-size:11px">Action</th></tr></thead><tbody>';
     works.forEach(function(w){
       var empName=userMap[w.userId]||'Unknown';
-      var hasFile=w.file?'<a href="#" onclick="adDownloadFile(this.dataset.id,event)" data-id="'+w.id+'" style="color:#0f766e">Download</a>':'—';
+      var hasFile=w.file?'<a href="#" onclick="adDownloadFile(this.dataset.id,event)" data-id="'+w.id+'" style="color:#0f766e;margin-right:8px">View</a><a href="#" onclick="adDownloadWorkFile(this.dataset.id,event)" data-id="'+w.id+'" style="color:#0f766e">Download</a>':'—';
       var billable=w.billableAmount?ru(w.billableAmount):'—';
       var remarks=w.remarks?w.remarks.substring(0,25)+(w.remarks.length>25?'...':''):'—';
       var statusBtn='<button class="btn btn-sm btn-s" onclick="updateWorkStatus('+w.id+',\'approved\')" style="margin-right:4px">Approve</button>'
-        +'<button class="btn btn-sm btn-d" onclick="updateWorkStatus('+w.id+',\'rejected\')" style="">Reject</button>';
-      html+='<tr><td style="font-size:12px;font-weight:500">'+empName+'</td><td style="font-size:12px">'+fd(w.date)+'</td><td style="font-size:12px">'+w.project+'</td><td style="font-size:12px;max-width:120px">'+w.description.substring(0,25)+'...</td><td style="font-size:12px">'+billable+'</td><td style="font-size:12px;max-width:120px">'+remarks+'</td><td style="font-size:12px">'+hasFile+'</td><td>'+badge(w.status)+'</td><td style="font-size:12px">'+(w.status==='pending'?statusBtn:badge(w.status))+'</td></tr>';
+        +'<button class="btn btn-sm btn-d" onclick="updateWorkStatus('+w.id+',\'rejected\')" style="margin-right:4px">Reject</button>';
+      var delBtn='<button class="btn btn-sm btn-d" onclick="adDeleteWork('+w.id+')">Delete</button>';
+      html+='<tr><td style="font-size:12px;font-weight:500">'+empName+'</td><td style="font-size:12px">'+fd(w.date)+'</td><td style="font-size:12px">'+w.project+'</td><td style="font-size:12px;max-width:120px">'+w.description.substring(0,25)+'...</td><td style="font-size:12px">'+billable+'</td><td style="font-size:12px;max-width:120px">'+remarks+'</td><td style="font-size:12px">'+hasFile+'</td><td>'+badge(w.status)+'</td><td style="font-size:12px;white-space:nowrap">'+(w.status==='pending'?statusBtn:'')+delBtn+'</td></tr>';
     });
     html+='</tbody></table>';
   }
   html+='</div></div>';
   return html;
 }
+function adDownloadWorkFile(workId,evt){
+  evt.preventDefault();
+  var works=getW();
+  var work=works.filter(function(w){return w.id===parseInt(workId);})[0];
+  if(work&&work.file) saveFileToDisk(work.file, work.fileName||'service-report');
+}
 function adDownloadFile(workId,evt){
   evt.preventDefault();
   var works=getW();
   var work=works.filter(function(w){return w.id===parseInt(workId);})[0];
-  if(work&&work.file){
-    var link=document.createElement('a');
-    link.href=work.file;
-    link.download=work.fileName||'service-report';
-    link.click();
-  }
+  if(work&&work.file) viewFileInTab(work.file);
 }
 function updateWorkStatus(workId,status){
   var works=getW();
@@ -2457,6 +2555,7 @@ function updateWorkStatus(workId,status){
     setW(works);
     go('/admin/service');
     toast('Work status updated to '+status);
+    if(window._fsSaveRecord) window._fsSaveRecord('hr_work', works[widx]).catch(function(){toast('Updated locally, but cloud sync failed — check your connection','err');});
   }
 }
 
@@ -2600,7 +2699,7 @@ function pgPurchase(){
     +'<thead><tr><th>Date</th><th>Project / Remarks</th><th>File</th></tr></thead><tbody>'
     +(invs.length===0?'<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:32px">No purchase invoices uploaded yet</td></tr>':
     invs.map(function(p){
-      return '<tr><td>'+fd(p.date)+'</td><td style="max-width:220px;font-size:12px;color:#475569">'+p.remarks+'</td><td><a href="'+p.fileData+'" download="'+p.fileName+'" class="btn btn-o btn-sm">View</a></td></tr>';
+      return '<tr><td>'+fd(p.date)+'</td><td style="max-width:220px;font-size:12px;color:#475569">'+p.remarks+'</td><td><a href="'+p.fileData+'" target="_blank" rel="noopener" class="btn btn-o btn-sm" style="margin-right:4px">View</a><a href="'+p.fileData+'" download="'+p.fileName+'" class="btn btn-o btn-sm" style="margin-right:4px">Download</a><button class="btn btn-d btn-sm" onclick="deletePurchase('+p.id+')">Delete</button></td></tr>';
     }).join(''))
     +'</tbody></table></div></div></div>';
 }
@@ -2609,7 +2708,7 @@ var _pendingInvoiceName=null;
 function onInvoiceFileChosen(e){
   var file=e.target.files&&e.target.files[0];
   if(!file)return;
-  if(file.size>5*1024*1024){toast('File too large — please use a file under 5MB','err');e.target.value='';return;}
+  if(file.size>500*1024){toast('File too large — max 500KB (compress the photo/PDF and try again)','err');e.target.value='';return;}
   var reader=new FileReader();
   reader.onload=function(ev){
     _pendingInvoiceData=ev.target.result;
@@ -2630,12 +2729,14 @@ function submitPurchase(){
   if(!_pendingInvoiceData){toast('Please select an invoice file','err');return;}
   if(!remarks){toast('Project / remarks is required','err');return;}
   var invs=getPI();
-  invs.push({id:nid(invs),userId:CU.id,date:td(),remarks:remarks,fileName:_pendingInvoiceName,fileData:_pendingInvoiceData,createdAt:new Date().toISOString()});
+  var rec={id:nid(invs),userId:CU.id,date:td(),remarks:remarks,fileName:_pendingInvoiceName,fileData:_pendingInvoiceData,createdAt:new Date().toISOString()};
+  invs.push(rec);
   setPI(invs);
   _pendingInvoiceData=null;_pendingInvoiceName=null;
   var admins=getU().filter(function(u){return u.role==='admin';});
   admins.forEach(function(a){pushNotif(a.id,'New Purchase Invoice',CU.name+' uploaded a purchase invoice: '+remarks,'info');});
   go('/purchase');toast('Invoice submitted!');
+  if(window._fsSaveRecord) window._fsSaveRecord('hr_pi', rec).catch(function(){toast('Saved on this device, but failed to sync to the cloud — try again with a connection','err');});
 }
 function pgProfile(){
   var u=getU().filter(function(x){return x.id===CU.id;})[0]||CU;
