@@ -54,13 +54,14 @@ tr:hover td{background:#f8fafc;}
 .modal-box{background:#fff;border-radius:16px;width:480px;max-width:100%;max-height:90vh;overflow-y:auto;}
 /* Calendar */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-.cal-day{position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:transform .1s;user-select:none;}
+.cal-day{position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:transform .1s;user-select:none;}
 .cal-day:not(.cal-future):not(.cal-sun):hover{transform:scale(1.1);}
 .cal-today{outline:2px solid #0f766e;outline-offset:1px;}
 .cal-present{background:#dcfce7;color:#166534;border-color:#86efac;}
 .cal-half{background:#fef9c3;color:#854d0e;border-color:#fde68a;}
 .cal-absent{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
-.cal-swork{background:#ccfbf1;color:#0f766e;border-color:#5eead4;}
+.cal-swork{background:#f97316;color:#fff;border-color:#ea580c;}
+.cal-swork-used{background:#2563eb;color:#fff;border-color:#1d4ed8;}
 .cal-hwork{background:#f3e8ff;color:#7e22ce;border-color:#d8b4fe;}
 .cal-leave{background:#dbeafe;color:#1e40af;border-color:#93c5fd;}
 .cal-holiday{background:#f3e8ff;color:#7e22ce;border-color:#c4b5fd;}
@@ -842,17 +843,34 @@ function calcSal(uid,month,year){
   var gross=Math.min(mo,mo/wd*paid);
   return{paid:Math.min(paid,wd),wd:wd,gross:gross,ded:Math.max(0,mo-gross),net:gross,mo:mo};
 }
-function leaveBal(uid){
-  var leaves=getL().filter(function(l){return l.userId===uid&&l.status==='approved';});
+function ovDays(l,y){
+  // number of days of leave l that fall inside calendar year y
+  var a=l.startDate>(y+'-01-01')?l.startDate:(y+'-01-01');
+  var b=l.endDate<(y+'-12-31')?l.endDate:(y+'-12-31');
+  if(a>b)return 0;
+  return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000)+1;
+}
+function leaveBal(uid,year){
+  // Balances are per calendar year (sick leave quota, comp off earned/taken). year defaults to the current year.
+  var y=Number(year)||new Date().getFullYear();
+  var leaves=getL().filter(function(l){return String(l.userId)===String(uid)&&l.status==='approved';});
   var su=0,co=0,pu=0;
   leaves.forEach(function(l){
-    var d=Math.round((new Date(l.endDate)-new Date(l.startDate))/86400000)+1;
+    var d=ovDays(l,y);
     if(l.type==='sick')su+=d;
     else if(l.type==='comp_off')co+=d;
     else if(l.type==='personal')pu+=d;
   });
-  var earned=getA().filter(function(a){return a.userId===uid&&a.status!=='rejected'&&(a.type==='sunday_work'||a.type==='holiday_work');}).length;
+  var earned=getA().filter(function(a){return String(a.userId)===String(uid)&&String(a.date).slice(0,4)===String(y)&&a.status!=='rejected'&&(a.type==='sunday_work'||a.type==='holiday_work');}).length;
   return{sikUsed:su,sikLeft:Math.max(0,2-su),compEarned:earned,compLeft:Math.max(0,earned-co),personalUsed:pu};
+}
+function compUsedMap(uid,y){
+  // marks earned comp-off days (Sunday/Holiday work) that have been used up by approved Comp Off leave, oldest first
+  var earned=getA().filter(function(a){return String(a.userId)===String(uid)&&String(a.date).slice(0,4)===String(y)&&a.status!=='rejected'&&(a.type==='sunday_work'||a.type==='holiday_work');}).sort(function(a,b){return a.date.localeCompare(b.date);});
+  var taken=0;
+  getL().forEach(function(l){if(String(l.userId)===String(uid)&&l.status==='approved'&&l.type==='comp_off')taken+=ovDays(l,Number(y));});
+  var m={};earned.slice(0,taken).forEach(function(a){m[a.date]=true;});
+  return m;
 }
 
 // ============ CROSS-CHECK HELPERS (leave vs attendance conflicts) ============
@@ -891,6 +909,7 @@ function renderCal(){
   var hMap={};hols.forEach(function(h){hMap[h.date]=h.name;});
   var lTag={casual:'C.Leave',sick:'Sick',comp_off:'CompOff',personal:'LOP'};
   var todayStr=td();
+  var usedCO=compUsedMap(CU.id,y);
   var first=new Date(y,m-1,1);
   var lastD=new Date(y,m,0).getDate();
   var startDow=first.getDay();
@@ -923,6 +942,7 @@ function renderCal(){
         cls+=' '+(tc[rec.type]||'cal-present');
         var tl={present:'Present',half_day:'Half Day',absent:'Absent',sunday_work:'Sun Work',holiday_work:'Hol Work',leave:'Leave'};
         tagTxt=tl[rec.type]||'Present';tagTitle=tagTxt+' — Approved';
+        if((rec.type==='sunday_work'||rec.type==='holiday_work')&&usedCO[rec.date]){cls=cls.replace(' '+(tc[rec.type]||''),' cal-swork-used');tagTitle+=' (Comp Off taken)';}
       }
       canClick=true;
     } else if(isFuture){
@@ -940,7 +960,7 @@ function renderCal(){
     }
     if(canClick)clickable=' onclick="openDay(\''+ds+'\')"';
     var titleAttr=d+(isHol?' - '+hMap[ds]:'')+(tagTitle?' — '+tagTitle:'');
-    html+='<div class="'+cls+'"'+clickable+' title="'+titleAttr+'"><span>'+d+'</span>'+(tagTxt?'<span style="font-size:7px;opacity:.75;line-height:1;margin-top:1px">'+tagTxt+'</span>':(isSun&&!rec?'<span style="font-size:8px;opacity:.6">off</span>':''))+'</div>';
+    html+='<div class="'+cls+'"'+clickable+' title="'+titleAttr+'"><span>'+d+'</span>'+(tagTxt?'<span style="font-size:10px;font-weight:600;opacity:.9;line-height:1.1;margin-top:2px">'+tagTxt+'</span>':(isSun&&!rec?'<span style="font-size:10px;opacity:.6">off</span>':''))+'</div>';
   }
   el.innerHTML=html;
 }
@@ -954,7 +974,7 @@ function openDay(ds){
   var hols=getH();
   var holName=hols.filter(function(h){return h.date===ds;}).map(function(h){return h.name;})[0]||'';
   var isSun=new Date(ds+'T00:00:00').getDay()===0;
-  var bal=leaveBal(CU.id);
+  var bal=leaveBal(CU.id,Number(ds.slice(0,4)));
   var dLabel=new Date(ds+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   var alreadySubmitted=(rec&&rec.status!=='rejected')||!!leaveRec;
   var isApproved=(rec&&rec.status==='approved')||(leaveRec&&leaveRec.status==='approved');
@@ -1074,7 +1094,7 @@ function submitDayLeave(ds){
   if(conflict){toast('ALREADY SUBMITTED — '+conflict.reason+' on '+fd(conflict.date),'err');return;}
   var leaves=getL();
   var days=Math.round((new Date(lto)-new Date(ds))/86400000)+1;
-  var bal=leaveBal(CU.id);
+  var bal=leaveBal(CU.id,Number(ds.slice(0,4)));
   if(ltype==='personal'&&bal.compLeft>0){toast('You have '+bal.compLeft+' Comp Off day(s) available. Please clear your Comp Off before applying Personal Leave (LOP).','err');return;}
   if(ltype==='sick'&&days>bal.sikLeft){toast('Insufficient Sick Leave balance — '+bal.sikLeft+' day(s) left.','err');return;}
   leaves.push({id:nid(leaves),userId:CU.id,type:ltype,startDate:ds,endDate:lto,days:days,reason:reason,status:'pending',createdAt:new Date().toISOString()});
@@ -1125,7 +1145,7 @@ function adminEmpMonthView(uid,m,y){
       if(!r)notSub++;
     }
   }
-  var bal=leaveBal(uid);
+  var bal=leaveBal(emp.id,y);
   var card=function(ico,bg,val,col,lbl,sub){return '<div class=\"stat-card\"><div style=\"width:28px;height:28px;border-radius:8px;background:'+bg+';display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px\">'+ico+'</div><div style=\"font-size:26px;font-weight:700;color:'+col+'\">'+val+'</div><div style=\"font-size:11px;font-weight:600;margin-top:2px\">'+lbl+'</div><div style=\"font-size:10px;color:#94a3b8\">'+sub+'</div></div>';};
   var periodLbl=(allMonths?'All months':mn(m))+' '+y;
   var html='<div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px\"><h3 style=\"font-weight:700;font-size:15px\">'+emp.name+' &mdash; Summary</h3><span style=\"font-size:11px;color:#94a3b8\">'+periodLbl+'</span></div>'
@@ -1135,9 +1155,9 @@ function adminEmpMonthView(uid,m,y){
     +card('&#127958;','#eff6ff',leaveAppr,'#2563eb','Leave Days','Approved'+(leavePend?' &middot; '+leavePend+' pending':''))
     +card('&#9888;','#fff1f2',notSub,'#be123c','Not Submitted','Past working days'+(rejected?' &middot; '+rejected+' rejected':''))
     +card('&#8987;','#fffbeb',pending,'#d97706','Pending','Attendance awaiting approval')
-    +card('&#129298;','#fef2f2',bal.sikLeft,'#dc2626','Sick Leave Balance','Remaining (of 2)')
-    +card('&#128260;','#f5f3ff',bal.compLeft,'#7c3aed','Comp Off Balance','Available ('+bal.compEarned+' earned)')
-    +card('&#128203;','#fff7ed',bal.personalUsed,'#ea580c','Personal (LOP)','Used overall')
+    +card('&#129298;','#fef2f2',bal.sikLeft,'#dc2626','Sick Leave Balance','Remaining of 2 in '+y)
+    +card('&#128260;','#f5f3ff',bal.compLeft,'#7c3aed','Comp Off Balance','Available in '+y+' ('+bal.compEarned+' earned)')
+    +card('&#128203;','#fff7ed',bal.personalUsed,'#ea580c','Personal (LOP)','Used in '+y)
     +'</div>';
   // ---- calendar (needs one specific month) ----
   html+='<div class=\"card\" style=\"margin-bottom:16px\"><h3 style=\"font-weight:700;font-size:15px;margin-bottom:12px\">Attendance Calendar &mdash; '+emp.name+'</h3>';
@@ -1145,6 +1165,7 @@ function adminEmpMonthView(uid,m,y){
     html+='<p style=\"color:#94a3b8;font-size:13px\">Select a specific month above to view the attendance calendar.</p></div>';
     return html;
   }
+  var usedCO=compUsedMap(emp.id,y);
   var first=new Date(y,m-1,1),lastD=new Date(y,m,0).getDate(),startDow=first.getDay();
   var grid='';
   for(var i=0;i<startDow;i++)grid+='<div></div>';
@@ -1165,7 +1186,8 @@ function adminEmpMonthView(uid,m,y){
       else{
         var tc={present:'cal-present',half_day:'cal-half',absent:'cal-absent',sunday_work:'cal-swork',holiday_work:'cal-hwork',leave:'cal-leave'};
         var tl={present:'Present',half_day:'Half Day',absent:'Absent',sunday_work:'Sun Work',holiday_work:'Hol Work',leave:'Leave'};
-        cls+=' '+(tc[rec.type]||'cal-present');tag=tl[rec.type]||'Present';title+=' — '+tag+' (approved)';
+        var isCO=(rec.type==='sunday_work'||rec.type==='holiday_work');
+        cls+=' '+((isCO&&usedCO[rec.date])?'cal-swork-used':(tc[rec.type]||'cal-present'));tag=tl[rec.type]||'Present';title+=' — '+tag+' (approved)'+((isCO&&usedCO[rec.date])?' — Comp Off taken':'');
       }
     } else if(doj&&ds<doj){cls+=' cal-future';title+=' — Before joining date';}
     else if(isSun){cls+=' cal-sun';}
@@ -1174,13 +1196,13 @@ function adminEmpMonthView(uid,m,y){
     else if(ds===todayStr){cls+=' cal-today-log';tag='Not Sub';title+=' — Not submitted yet';}
     else{cls+=' cal-miss';tag='Not Sub';title+=' — Not submitted';}
     var clk=(lv||rec)?' onclick=\"admDayModal(\''+uid+'\',\''+ds+'\')\"':'';
-    grid+='<div class=\"'+cls+'\"'+(clk?clk:' style=\"cursor:default\"')+' title=\"'+title+'\"><span>'+d+'</span>'+(tag?'<span style=\"font-size:7px;opacity:.75;line-height:1;margin-top:1px\">'+tag+'</span>':'')+'</div>';
+    grid+='<div class=\"'+cls+'\"'+(clk?clk:' style=\"cursor:default\"')+' title=\"'+title+'\"><span>'+d+'</span>'+(tag?'<span style=\"font-size:10px;font-weight:600;opacity:.9;line-height:1.1;margin-top:2px\">'+tag+'</span>':'')+'</div>';
   }
   html+='<div class=\"cal-grid\" style=\"margin-bottom:4px\">'
     +['S','M','T','W','T','F','S'].map(function(x,i){return '<div style=\"text-align:center;font-size:10px;font-weight:700;padding:4px 0;color:'+(i===0?'#ef4444':'#94a3b8')+'\">'+x+'</div>';}).join('')
     +'</div><div class=\"cal-grid\">'+grid+'</div>'
     +'<div style=\"display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9\">'
-    +[{cls:'cal-present',l:'Present (approved)'},{cls:'cal-half',l:'Half Day'},{cls:'cal-pending',l:'Pending approval'},{cls:'cal-miss',l:'Not submitted / Rejected'},{cls:'cal-leave',l:'Leave (* = pending)'},{cls:'cal-holiday',l:'Holiday'},{cls:'cal-swork',l:'Sun Work'},{cls:'cal-hwork',l:'Holiday Work'}]
+    +[{cls:'cal-present',l:'Present (approved)'},{cls:'cal-half',l:'Half Day'},{cls:'cal-pending',l:'Pending approval'},{cls:'cal-miss',l:'Not submitted / Rejected'},{cls:'cal-leave',l:'Leave (* = pending)'},{cls:'cal-holiday',l:'Holiday'},{cls:'cal-swork',l:'Sun Work (comp off available)'},{cls:'cal-swork-used',l:'Sun Work (comp off taken)'},{cls:'cal-hwork',l:'Holiday Work'}]
       .map(function(x){return '<div style=\"display:flex;align-items:center;gap:4px\"><div class=\"'+x.cls+'\" style=\"width:10px;height:10px;border-radius:3px;flex-shrink:0\"></div><span style=\"font-size:10px;color:#64748b\">'+x.l+'</span></div>';}).join('')
     +'</div>'
     +'<p style=\"font-size:10px;color:#94a3b8;text-align:center;margin-top:6px\">Tap a submitted day (attendance or leave) to approve, reject or delete it</p>'
@@ -2307,7 +2329,7 @@ function pgEmpDash(){
     +'</div>'
     +'<div class="cal-grid" id="calGrid"></div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9">'
-    +[{cls:'cal-present',l:'Present'},{cls:'cal-half',l:'Half Day'},{cls:'cal-absent',l:'Absent'},{cls:'cal-pending',l:'Pending'},{cls:'cal-leave',l:'Leave'},{cls:'cal-holiday',l:'Holiday'},{cls:'cal-swork',l:'Sun Work'}]
+    +[{cls:'cal-present',l:'Present'},{cls:'cal-half',l:'Half Day'},{cls:'cal-absent',l:'Absent'},{cls:'cal-pending',l:'Pending'},{cls:'cal-leave',l:'Leave'},{cls:'cal-holiday',l:'Holiday'},{cls:'cal-swork',l:'Sun Work (comp off available)'},{cls:'cal-swork-used',l:'Sun Work (comp off taken)'}]
     .map(function(x){return '<div style="display:flex;align-items:center;gap:4px"><div class="'+x.cls+'" style="width:10px;height:10px;border-radius:3px;flex-shrink:0"></div><span style="font-size:10px;color:#64748b">'+x.l+'</span></div>';}).join('')
     +'</div>'
     +'<p style="font-size:10px;color:#94a3b8;text-align:center;margin-top:6px">Tap any coloured day to mark attendance or apply leave</p>'
@@ -2442,7 +2464,7 @@ function submitLeave(){
   if(conflict){toast('ALREADY SUBMITTED — '+conflict.reason+' on '+fd(conflict.date),'err');return;}
   var leaves=getL();
   var days=Math.round((new Date(end)-new Date(start))/86400000)+1;
-  var bal=leaveBal(CU.id);
+  var bal=leaveBal(CU.id,Number(start.slice(0,4)));
   if(type==='personal'&&bal.compLeft>0){toast('You have '+bal.compLeft+' Comp Off day(s) available. Please clear your Comp Off before applying Personal Leave (LOP).','err');return;}
   if(type==='sick'&&days>bal.sikLeft){toast('Insufficient Sick Leave balance — '+bal.sikLeft+' day(s) left.','err');return;}
   leaves.push({id:nid(leaves),userId:CU.id,type:type,startDate:start,endDate:end,days:days,reason:reason,status:'pending',createdAt:new Date().toISOString()});
