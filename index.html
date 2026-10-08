@@ -995,12 +995,11 @@ function openDay(ds){
       +'<div style="margin-bottom:10px"><label class="label">Attendance Type</label>'
       +'<select class="input" id="day_type">'
       +((isSun||holName)?'':'<option value="present">Present</option>')
-      +'<option value="absent">Absent</option>'
       +((isSun||holName)?'':'<option value="half_day">Half Day</option>')
       +(isSun?'<option value="sunday_work" selected>Sunday Work (Comp Off)</option>':'')
       +(holName&&!isSun?'<option value="holiday_work" selected>Holiday Work (Comp Off)</option>':'')
       +'</select></div>'
-      +((isSun||holName)?'<div style="font-size:11px;color:#94a3b8;margin:-4px 0 10px">Sundays/holidays can only be logged as Comp Off (worked) or Absent, to make sure Comp Off is credited correctly.</div>':'')
+      +((isSun||holName)?'<div style="font-size:11px;color:#94a3b8;margin:-4px 0 10px">Sundays/holidays can only be logged as Comp Off (worked), to make sure Comp Off is credited correctly. To mark absence, use Apply Leave.</div>':'')
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><div><label class="label">Check-in Time</label><input class="input" type="time" id="day_tin" value="09:00"/></div><div><label class="label">Check-out Time</label><input class="input" type="time" id="day_tout" value="18:00"/></div></div><div style="margin-bottom:14px"><label class="label">Work Details / Remarks</label><input class="input" id="day_note" placeholder="Work details or remarks..."/></div>'
       +'<button class="btn btn-p" onclick="submitDayAtt(\''+ds+'\')" style="width:100%;justify-content:center">Submit Attendance</button>'
       +'</div>'
@@ -1051,6 +1050,7 @@ function submitDayAtt(ds){
   var tin=document.getElementById('day_tin')?document.getElementById('day_tin').value:'09:00';
   var tout=document.getElementById('day_tout')?document.getElementById('day_tout').value:'18:00';
   if(!tin||!tout){toast('Time required','err');return;}
+  if(type==='absent'){toast('Absence can only be marked from Apply Leave','err');return;}
   var lv=leaveOnDate(CU.id,ds);
   if(lv){toast('ALREADY SUBMITTED — Leave already applied for this date','err');return;}
   var att=getA();
@@ -1080,6 +1080,155 @@ function submitDayLeave(ds){
   leaves.push({id:nid(leaves),userId:CU.id,type:ltype,startDate:ds,endDate:lto,days:days,reason:reason,status:'pending',createdAt:new Date().toISOString()});
   setL(leaves);closeModal();toast('Leave applied!');
   if(CP==='/dashboard')go('/dashboard');
+}
+
+// ============ ADMIN: EMPLOYEE MONTH VIEW (calendar + summary, shown only when employee filter is on) ============
+function adminEmpMonthView(uid,m,y){
+  var emp=getU().filter(function(u){return String(u.id)===String(uid);})[0];
+  if(!emp)return '';
+  var allMonths=(m==='all');
+  var todayStr=td();
+  var hMap={};getH().forEach(function(h){hMap[h.date]=h.name;});
+  var att=getA().filter(function(a){return String(a.userId)===String(uid);});
+  var leaves=getL().filter(function(l){return String(l.userId)===String(uid)&&l.status!=='rejected';});
+  var aMap={};att.forEach(function(a){aMap[a.date]=a;});
+  var doj=emp.dateOfJoining||'';
+  var lTag={casual:'C.Leave',sick:'Sick',comp_off:'CompOff',personal:'LOP'};
+  var inPeriod=function(ds){var d=new Date(ds+'T00:00:00');return d.getFullYear()===y&&(allMonths||d.getMonth()+1===m);};
+  // ---- summary numbers for the selected period ----
+  var pAtt=att.filter(function(a){return inPeriod(a.date);});
+  var present=pAtt.filter(function(a){return a.status==='approved'&&(a.type==='present'||a.type==='sunday_work'||a.type==='holiday_work');}).length;
+  var half=pAtt.filter(function(a){return a.status==='approved'&&a.type==='half_day';}).length;
+  var pending=pAtt.filter(function(a){return a.status==='pending';}).length;
+  var rejected=pAtt.filter(function(a){return a.status==='rejected';}).length;
+  var leaveAppr=0,leavePend=0;
+  leaves.forEach(function(l){
+    var d=new Date(l.startDate+'T00:00:00'),e=new Date(l.endDate+'T00:00:00');
+    while(d<=e){
+      var ds=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+      if(inPeriod(ds)){if(l.status==='approved')leaveAppr++;else leavePend++;}
+      d.setDate(d.getDate()+1);
+    }
+  });
+  var notSub=0;
+  var firstM=allMonths?1:m,lastM=allMonths?12:m;
+  for(var mm=firstM;mm<=lastM;mm++){
+    var ld=new Date(y,mm,0).getDate();
+    for(var dd=1;dd<=ld;dd++){
+      var s=y+'-'+pad(mm)+'-'+pad(dd);
+      if(s>=todayStr)continue;
+      if(doj&&s<doj)continue;
+      if(new Date(s+'T00:00:00').getDay()===0||hMap[s])continue;
+      var r=aMap[s];
+      if(r&&r.status!=='rejected')continue;
+      if(leaves.some(function(l){return l.startDate<=s&&s<=l.endDate;}))continue;
+      if(!r)notSub++;
+    }
+  }
+  var bal=leaveBal(uid);
+  var card=function(ico,bg,val,col,lbl,sub){return '<div class=\"stat-card\"><div style=\"width:28px;height:28px;border-radius:8px;background:'+bg+';display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px\">'+ico+'</div><div style=\"font-size:26px;font-weight:700;color:'+col+'\">'+val+'</div><div style=\"font-size:11px;font-weight:600;margin-top:2px\">'+lbl+'</div><div style=\"font-size:10px;color:#94a3b8\">'+sub+'</div></div>';};
+  var periodLbl=(allMonths?'All months':mn(m))+' '+y;
+  var html='<div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px\"><h3 style=\"font-weight:700;font-size:15px\">'+emp.name+' &mdash; Summary</h3><span style=\"font-size:11px;color:#94a3b8\">'+periodLbl+'</span></div>'
+    +'<div class=\"g4\" style=\"margin-bottom:16px\">'
+    +card('&#9989;','#f0fdf4',present,'#16a34a','Present','Approved, '+periodLbl)
+    +card('&#127773;','#fefce8',half,'#ca8a04','Half Day','Approved, '+periodLbl)
+    +card('&#127958;','#eff6ff',leaveAppr,'#2563eb','Leave Days','Approved'+(leavePend?' &middot; '+leavePend+' pending':''))
+    +card('&#9888;','#fff1f2',notSub,'#be123c','Not Submitted','Past working days'+(rejected?' &middot; '+rejected+' rejected':''))
+    +card('&#8987;','#fffbeb',pending,'#d97706','Pending','Attendance awaiting approval')
+    +card('&#129298;','#fef2f2',bal.sikLeft,'#dc2626','Sick Leave Balance','Remaining (of 2)')
+    +card('&#128260;','#f5f3ff',bal.compLeft,'#7c3aed','Comp Off Balance','Available ('+bal.compEarned+' earned)')
+    +card('&#128203;','#fff7ed',bal.personalUsed,'#ea580c','Personal (LOP)','Used overall')
+    +'</div>';
+  // ---- calendar (needs one specific month) ----
+  html+='<div class=\"card\" style=\"margin-bottom:16px\"><h3 style=\"font-weight:700;font-size:15px;margin-bottom:12px\">Attendance Calendar &mdash; '+emp.name+'</h3>';
+  if(allMonths){
+    html+='<p style=\"color:#94a3b8;font-size:13px\">Select a specific month above to view the attendance calendar.</p></div>';
+    return html;
+  }
+  var first=new Date(y,m-1,1),lastD=new Date(y,m,0).getDate(),startDow=first.getDay();
+  var grid='';
+  for(var i=0;i<startDow;i++)grid+='<div></div>';
+  for(var d=1;d<=lastD;d++){
+    var ds=y+'-'+pad(m)+'-'+pad(d);
+    var isSun=new Date(ds+'T00:00:00').getDay()===0;
+    var isHol=!!hMap[ds];
+    var rec=aMap[ds];
+    var lv=leaves.filter(function(l){return l.startDate<=ds&&ds<=l.endDate;})[0];
+    var cls='cal-day',tag='',title=d+(isHol?' - '+hMap[ds]:'');
+    if(ds===todayStr)cls+=' cal-today';
+    if(lv){
+      cls+=' cal-leave';tag=(lTag[lv.type]||'Leave')+(lv.status==='pending'?'*':'');
+      title+=' — '+(lTag[lv.type]||'Leave')+(lv.status==='pending'?' (pending approval)':' (approved)');
+    } else if(rec){
+      if(rec.status==='pending'){cls+=' cal-pending';tag='Pending';title+=' — '+rec.type.replace(/_/g,' ')+' (pending approval)';}
+      else if(rec.status==='rejected'){cls+=' cal-miss';tag='Rejected';title+=' — Rejected';}
+      else{
+        var tc={present:'cal-present',half_day:'cal-half',absent:'cal-absent',sunday_work:'cal-swork',holiday_work:'cal-hwork',leave:'cal-leave'};
+        var tl={present:'Present',half_day:'Half Day',absent:'Absent',sunday_work:'Sun Work',holiday_work:'Hol Work',leave:'Leave'};
+        cls+=' '+(tc[rec.type]||'cal-present');tag=tl[rec.type]||'Present';title+=' — '+tag+' (approved)';
+      }
+    } else if(doj&&ds<doj){cls+=' cal-future';title+=' — Before joining date';}
+    else if(isSun){cls+=' cal-sun';}
+    else if(isHol){cls+=' cal-holiday';}
+    else if(ds>todayStr){cls+=' cal-future';}
+    else if(ds===todayStr){cls+=' cal-today-log';tag='Not Sub';title+=' — Not submitted yet';}
+    else{cls+=' cal-miss';tag='Not Sub';title+=' — Not submitted';}
+    var clk=(lv||rec)?' onclick=\"admDayModal(\''+uid+'\',\''+ds+'\')\"':'';
+    grid+='<div class=\"'+cls+'\"'+(clk?clk:' style=\"cursor:default\"')+' title=\"'+title+'\"><span>'+d+'</span>'+(tag?'<span style=\"font-size:7px;opacity:.75;line-height:1;margin-top:1px\">'+tag+'</span>':'')+'</div>';
+  }
+  html+='<div class=\"cal-grid\" style=\"margin-bottom:4px\">'
+    +['S','M','T','W','T','F','S'].map(function(x,i){return '<div style=\"text-align:center;font-size:10px;font-weight:700;padding:4px 0;color:'+(i===0?'#ef4444':'#94a3b8')+'\">'+x+'</div>';}).join('')
+    +'</div><div class=\"cal-grid\">'+grid+'</div>'
+    +'<div style=\"display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9\">'
+    +[{cls:'cal-present',l:'Present (approved)'},{cls:'cal-half',l:'Half Day'},{cls:'cal-pending',l:'Pending approval'},{cls:'cal-miss',l:'Not submitted / Rejected'},{cls:'cal-leave',l:'Leave (* = pending)'},{cls:'cal-holiday',l:'Holiday'},{cls:'cal-swork',l:'Sun Work'},{cls:'cal-hwork',l:'Holiday Work'}]
+      .map(function(x){return '<div style=\"display:flex;align-items:center;gap:4px\"><div class=\"'+x.cls+'\" style=\"width:10px;height:10px;border-radius:3px;flex-shrink:0\"></div><span style=\"font-size:10px;color:#64748b\">'+x.l+'</span></div>';}).join('')
+    +'</div>'
+    +'<p style=\"font-size:10px;color:#94a3b8;text-align:center;margin-top:6px\">Tap a submitted day (attendance or leave) to approve, reject or delete it</p>'
+    +'</div>';
+  return html;
+}
+
+// ---- admin actions straight from the employee calendar ----
+function admDayModal(uid,ds){
+  var emp=getU().filter(function(u){return String(u.id)===String(uid);})[0];
+  if(!emp)return;
+  var lv=getL().filter(function(l){return String(l.userId)===String(uid)&&l.status!=='rejected'&&l.startDate<=ds&&ds<=l.endDate;})[0];
+  var rec=getA().filter(function(a){return String(a.userId)===String(uid)&&a.date===ds;})[0];
+  var row=function(k,v){return '<div style=\"display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9\"><span style=\"color:#64748b\">'+k+'</span><span style=\"text-align:right\">'+v+'</span></div>';};
+  var dTxt=new Date(ds+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var body='',status='',acts='';
+  if(lv){
+    var days=lv.days||(Math.round((new Date(lv.endDate)-new Date(lv.startDate))/86400000)+1);
+    status=lv.status;
+    body=row('Type',badge(lv.type))+row('Duration','<strong>'+fd(lv.startDate)+' &mdash; '+fd(lv.endDate)+' ('+days+' day'+(days!==1?'s':'')+')</strong>')+row('Status',badge(lv.status))+(lv.reason?row('Reason',lv.reason):'')
+      +(days>1?'<div style=\"font-size:11px;color:#94a3b8;margin-top:8px\">Actions apply to the whole leave request ('+fd(lv.startDate)+' &mdash; '+fd(lv.endDate)+').</div>':'');
+    if(lv.status==='pending')acts+='<button class=\"btn btn-s\" style=\"flex:1;justify-content:center\" onclick=\"admDayAct(\'leave\','+lv.id+',\'approve\')\">Approve</button>';
+    acts+='<button class=\"btn btn-d\" style=\"flex:1;justify-content:center\" onclick=\"admDayAct(\'leave\','+lv.id+',\'reject\')\">Reject</button>'
+      +'<button class=\"btn btn-o\" style=\"flex:1;justify-content:center\" onclick=\"admDayAct(\'leave\','+lv.id+',\'delete\')\">Delete</button>';
+  } else if(rec){
+    status=rec.status;
+    body=row('Type',badge(rec.type))+row('Status',badge(rec.status))+(rec.timeIn?row('Check-in',rec.timeIn):'')+(rec.timeOut?row('Check-out',rec.timeOut):'')+(rec.notes?row('Work Details',rec.notes):'');
+    if(rec.status==='pending')acts+='<button class=\"btn btn-s\" style=\"flex:1;justify-content:center\" onclick=\"admDayAct(\'att\','+rec.id+',\'approve\')\">Approve</button>';
+    if(rec.status!=='rejected')acts+='<button class=\"btn btn-d\" style=\"flex:1;justify-content:center\" onclick=\"admDayAct(\'att\','+rec.id+',\'reject\')\">Reject</button>';
+    acts+='<button class=\"btn btn-o\" style=\"flex:1;justify-content:center\" onclick=\"admDayAct(\'att\','+rec.id+',\'delete\')\">Delete</button>';
+    if(rec.status==='rejected')body+='<div style=\"font-size:11px;color:#94a3b8;margin-top:8px\">Already rejected &mdash; the employee can resubmit this date.</div>';
+  } else return;
+  var bg=status==='approved'?'#f0fdf4':status==='rejected'?'#fff1f2':'#ffedd5';
+  var tc=status==='approved'?'#166534':status==='rejected'?'#be123c':'#c2410c';
+  openModal('<div style=\"background:'+bg+';padding:16px 18px;border-radius:16px 16px 0 0\"><div style=\"font-size:11px;font-weight:700;text-transform:uppercase;opacity:.65;color:'+tc+'\">'+emp.name+'</div><div style=\"font-size:17px;font-weight:700;color:'+tc+'\">'+dTxt+'</div></div>'
+    +'<div style=\"font-size:13px;padding:6px 18px 12px\">'+body+'</div>'
+    +'<div style=\"padding:0 18px 8px;font-size:11px;color:#94a3b8\">Reject / Delete notifies the employee to resubmit.</div>'
+    +'<div style=\"display:flex;gap:8px;padding:0 18px 10px\">'+acts+'</div>'
+    +'<div style=\"padding:0 18px 18px\"><button class=\"btn btn-o\" onclick=\"closeModal()\" style=\"width:100%;justify-content:center\">Close</button></div>');
+}
+function admDayAct(kind,id,act){
+  if(act==='reject'&&!confirm('Reject this '+(kind==='leave'?'leave request':'attendance record')+'? The employee will be asked to '+(kind==='leave'?'reapply':'resubmit')+'.'))return;
+  closeModal();
+  if(kind==='att'){
+    if(act==='approve')approveAtt(id);else if(act==='reject')rejectAtt(id);else deleteAttRecord(id);
+  } else {
+    if(act==='approve')approveLeave(id);else if(act==='reject')rejectLeave(id);else reapplyLeaveRecord(id);
+  }
 }
 
 // ============ ADMIN DASHBOARD ============
@@ -1164,6 +1313,7 @@ function pgAdminDash(){
       +'<div><div style="font-weight:700;font-size:15px;color:#0f766e">'+eu.name+'</div><div style="font-size:12px;color:#64748b">'+(eu.designation||'')+(eu.department?' &middot; '+eu.department:'')+'</div></div>'
       +'<button class="btn btn-o btn-sm" onclick="filterDashEmp(\'\')">Clear filter &#x2715;</button>'
       +'</div></div>';})():'')
+    +(empFilter?adminEmpMonthView(empFilter,dMo,dYr):'')
     +'<div class="card" style="margin-bottom:16px">'
     +'<h3 style="font-weight:600;margin-bottom:14px;font-size:14px">Pending Attendance</h3>'
     +(att.filter(function(a){return a.status==='pending';}).slice(0,5).map(function(a){
@@ -1201,21 +1351,72 @@ function pgAdminDash(){
 }
 
 // ============ ADMIN ATTENDANCE ============
+var attF={emp:'',st:'',m:'',y:''};
+var leaveF={emp:'',m:'',y:''};
+function filterYears(dates){
+  var set={};set[new Date().getFullYear()]=1;
+  dates.forEach(function(d){if(d)set[String(d).slice(0,4)]=1;});
+  return Object.keys(set).sort().reverse();
+}
+function monthYearSelects(f,setFn,years){
+  return '<select class=\"input\" style=\"width:130px\" onchange=\"'+setFn+'(\'m\',this.value)\">'
+    +'<option value=\"\">All Months</option>'
+    +[1,2,3,4,5,6,7,8,9,10,11,12].map(function(i){return '<option value=\"'+i+'\"'+(String(f.m)===String(i)?' selected':'')+'>'+mn(i)+'</option>';}).join('')
+    +'</select>'
+    +'<select class=\"input\" style=\"width:105px\" onchange=\"'+setFn+'(\'y\',this.value)\">'
+    +'<option value=\"\">All Years</option>'
+    +years.map(function(y){return '<option value=\"'+y+'\"'+(String(f.y)===String(y)?' selected':'')+'>'+y+'</option>';}).join('')
+    +'</select>';
+}
+function attFSet(k,v){attF[k]=v;renderAttTable();}
+function attFClear(){attF={emp:'',st:'',m:'',y:''};go('/admin/att');}
 function pgAdminAtt(){
   var users=getU().filter(function(u){return u.role==='employee';});
-  return '<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'    +'<div><h1 style="font-size:22px;font-weight:700">Manage Attendance</h1><p style="color:#64748b;font-size:13px">Review and approve staff attendance records.</p></div></div>'    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'    +'<select class="input" id="attFilterEmp" style="width:180px" onchange="renderAttTable()">'    +'<option value="">All Employees</option>'    +users.map(function(u){return '<option value="'+u.id+'">'+u.name+'</option>';}).join('')    +'</select>'    +'<select class="input" id="attFilterStatus" style="width:140px" onchange="renderAttTable()">'    +'<option value="">All Status</option>'    +'<option value="pending">Pending</option>'    +'<option value="approved">Approved</option>'    +'<option value="rejected">Rejected</option>'    +'</select>'    +'</div></div>'    +'<div class="card"><div id="attTbl" style="overflow-x:auto">'+buildAttTable()+'</div></div></div>';
+  var years=filterYears(getA().map(function(a){return a.date;}));
+  return '<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+    +'<div><h1 style="font-size:22px;font-weight:700">Manage Attendance</h1><p style="color:#64748b;font-size:13px">Review and approve staff attendance records.</p></div></div>'
+    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<select class="input" id="attFilterEmp" style="width:180px" onchange="attFSet(\'emp\',this.value)">'
+    +'<option value="">All Employees</option>'
+    +users.map(function(u){return '<option value="'+u.id+'"'+(String(attF.emp)===String(u.id)?' selected':'')+'>'+u.name+'</option>';}).join('')
+    +'</select>'
+    +'<select class="input" id="attFilterStatus" style="width:140px" onchange="attFSet(\'st\',this.value)">'
+    +'<option value="">All Status</option>'
+    +'<option value="pending"'+(attF.st==='pending'?' selected':'')+'>Pending</option>'
+    +'<option value="approved"'+(attF.st==='approved'?' selected':'')+'>Approved</option>'
+    +'<option value="rejected"'+(attF.st==='rejected'?' selected':'')+'>Rejected</option>'
+    +'</select>'
+    +monthYearSelects(attF,'attFSet',years)
+    +'<button class="btn btn-o btn-sm" onclick="attFClear()">Clear</button>'
+    +'</div></div>'
+    +'<div class="card"><div id="attTbl" style="overflow-x:auto">'+buildAttTable()+'</div></div></div>';
 }
 function buildAttTable(){
   var att=getA().slice().reverse();
   var users=getU().filter(function(u){return u.role==='employee';});
-  var empEl=document.getElementById('attFilterEmp');
-  var stEl=document.getElementById('attFilterStatus');
-  var empFilter=empEl?empEl.value:'';
-  var stFilter=stEl?stEl.value:'';
-  if(empFilter)att=att.filter(function(a){return String(a.userId)===String(empFilter);});
-  if(stFilter)att=att.filter(function(a){return a.status===stFilter;});
+  if(attF.emp)att=att.filter(function(a){return String(a.userId)===String(attF.emp);});
+  if(attF.st)att=att.filter(function(a){return a.status===attF.st;});
+  if(attF.y)att=att.filter(function(a){return String(a.date).slice(0,4)===String(attF.y);});
+  if(attF.m)att=att.filter(function(a){return Number(String(a.date).slice(5,7))===Number(attF.m);});
   if(att.length===0)return '<table><tbody><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:32px">No attendance records</td></tr></tbody></table>';
-  return '<table><thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Status</th><th>Time In/Out</th><th>Details</th><th>Actions</th></tr></thead><tbody>'    +att.map(function(a){      var u=users.filter(function(x){return x.id===a.userId;})[0];      var actions='';      if(a.status==='pending'){        actions='<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveAtt('+a.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectAtt('+a.id+')">Reject</button>';      } else {        actions='<span style="color:#94a3b8;font-size:12px;margin-right:6px">'+a.status+'</span>'          +'<button class="btn btn-d btn-sm" onclick="deleteAttRecord('+a.id+')">Delete</button>';      }      return '<tr>'        +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div><div style="font-size:11px;color:#64748b">'+(u&&u.designation?u.designation:'')+'</div></td>'        +'<td>'+fd(a.date)+'</td><td>'+badge(a.type)+'</td><td>'+badge(a.status)+'</td>'        +'<td style="font-size:11px;color:#64748b">'+(a.timeIn||'--')+'→'+(a.timeOut||'--')+'</td>'        +'<td style="max-width:140px;font-size:12px;color:#64748b">'+(a.notes||'&mdash;')+'</td>'        +'<td>'+actions+'</td></tr>';    }).join('')    +'</tbody></table>';
+  return '<table><thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Status</th><th>Time In/Out</th><th>Details</th><th>Actions</th></tr></thead><tbody>'
+    +att.map(function(a){
+      var u=users.filter(function(x){return x.id===a.userId;})[0];
+      var actions='';
+      if(a.status==='pending'){
+        actions='<button class="btn btn-s btn-sm" style="margin-right:4px" onclick="approveAtt('+a.id+')">Approve</button><button class="btn btn-d btn-sm" onclick="rejectAtt('+a.id+')">Reject</button>';
+      } else {
+        actions='<span style="color:#94a3b8;font-size:12px;margin-right:6px">'+a.status+'</span>'
+          +'<button class="btn btn-d btn-sm" onclick="deleteAttRecord('+a.id+')">Delete</button>';
+      }
+      return '<tr>'
+        +'<td><div style="font-weight:500;font-size:13px">'+(u?u.name:'?')+'</div><div style="font-size:11px;color:#64748b">'+(u&&u.designation?u.designation:'')+'</div></td>'
+        +'<td>'+fd(a.date)+'</td><td>'+badge(a.type)+'</td><td>'+badge(a.status)+'</td>'
+        +'<td style="font-size:11px;color:#64748b">'+(a.timeIn||'--')+'\u2192'+(a.timeOut||'--')+'</td>'
+        +'<td style="max-width:140px;font-size:12px;color:#64748b">'+(a.notes||'&mdash;')+'</td>'
+        +'<td>'+actions+'</td></tr>';
+    }).join('')
+    +'</tbody></table>';
 }
 function renderAttTable(){var el=document.getElementById('attTbl');if(el)el.innerHTML=buildAttTable();}
 function deleteAttRecord(id){
@@ -1225,7 +1426,7 @@ function deleteAttRecord(id){
   var r=att[i];
   pushNotif(r.userId,'Attendance Record Deleted','Your attendance record for '+fd(r.date)+' ('+r.type.replace(/_/g,' ')+') was removed by admin. Please resubmit your attendance.','error');
   att.splice(i,1);setA(att);
-  renderAttTable();toast('Attendance record deleted');
+  renderAttTable();if(CP==='/admin/dash')go(CP);toast('Attendance record deleted');
 }
 function approveAtt(id){
   var att=getA();var i=att.findIndex(function(a){return a.id===id;});
@@ -1239,17 +1440,46 @@ function rejectAtt(id){
   var att=getA();var i=att.findIndex(function(a){return a.id===id;});
   if(i<0)return;att[i].status='rejected';setA(att);
   var r=att[i];
-  pushNotif(r.userId,'Attendance Rejected','Your attendance for '+fd(r.date)+' ('+r.type.replace(/_/g,' ')+') was rejected.','error');
+  pushNotif(r.userId,'Attendance Rejected','Your attendance for '+fd(r.date)+' ('+r.type.replace(/_/g,' ')+') was rejected. Please resubmit your attendance.','error');
   go(CP);toast('Attendance rejected');
 }
 
 
 // ============ ADMIN LEAVES ============
+function leaveFSet(k,v){leaveF[k]=v;renderLeaveTable();}
+function leaveFClear(){leaveF={emp:'',m:'',y:''};go('/admin/leave');}
+function leaveTouchesPeriod(l,m,y){
+  // true if any day of the leave falls in the chosen month/year (either may be blank)
+  if(!m&&!y)return true;
+  var d=new Date(l.startDate+'T00:00:00'),e=new Date(l.endDate+'T00:00:00');
+  while(d<=e){
+    if((!y||String(d.getFullYear())===String(y))&&(!m||d.getMonth()+1===Number(m)))return true;
+    d.setDate(d.getDate()+1);
+  }
+  return false;
+}
 function pgAdminLeave(){
+  var emps=getU().filter(function(u){return u.role==='employee';});
+  var yrDates=[];getL().forEach(function(l){yrDates.push(l.startDate);yrDates.push(l.endDate);});
+  var years=filterYears(yrDates);
+  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Manage Leaves</h1><p style="color:#64748b;font-size:13px">Review and approve leave requests.</p></div>'
+    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<select class="input" id="leaveFilterEmp" style="width:180px" onchange="leaveFSet(\'emp\',this.value)">'
+    +'<option value="">All Employees</option>'
+    +emps.map(function(u){return '<option value="'+u.id+'"'+(String(leaveF.emp)===String(u.id)?' selected':'')+'>'+u.name+'</option>';}).join('')
+    +'</select>'
+    +monthYearSelects(leaveF,'leaveFSet',years)
+    +'<button class="btn btn-o btn-sm" onclick="leaveFClear()">Clear</button>'
+    +'</div></div>'
+    +'<div class="card"><div id="leaveTbl" style="overflow-x:auto">'+buildLeaveTable()+'</div></div></div>';
+}
+function renderLeaveTable(){var el=document.getElementById('leaveTbl');if(el)el.innerHTML=buildLeaveTable();}
+function buildLeaveTable(){
   var leaves=getL().slice().reverse();
   var users=getU();
-  return '<div><div style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:700">Manage Leaves</h1><p style="color:#64748b;font-size:13px">Review and approve leave requests.</p></div>'
-    +'<div class="card"><div style="overflow-x:auto"><table>'
+  if(leaveF.emp)leaves=leaves.filter(function(l){return String(l.userId)===String(leaveF.emp);});
+  if(leaveF.m||leaveF.y)leaves=leaves.filter(function(l){return leaveTouchesPeriod(l,leaveF.m,leaveF.y);});
+  return '<table>'
     +'<thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead><tbody>'
     +(leaves.length===0?'<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:32px">No leave requests</td></tr>':
     leaves.map(function(l){
@@ -1268,7 +1498,7 @@ function pgAdminLeave(){
           +'<button class="btn btn-o btn-sm" onclick="reapplyLeaveRecord('+l.id+')">Reapply</button>'
           +'</td></tr>';
     }).join(''))
-    +'</tbody></table></div></div></div>';
+    +'</tbody></table>';
 }
 function approveLeave(id){
   var leaves=getL();var i=leaves.findIndex(function(l){return l.id===id;});
@@ -1281,7 +1511,7 @@ function rejectLeave(id){
   var leaves=getL();var i=leaves.findIndex(function(l){return l.id===id;});
   if(i<0)return;leaves[i].status='rejected';setL(leaves);
   var r=leaves[i];
-  pushNotif(r.userId,'Leave Rejected','Your '+r.type.replace(/_/g,' ')+' request ('+fd(r.startDate)+' - '+fd(r.endDate)+') was rejected.','error');
+  pushNotif(r.userId,'Leave Rejected','Your '+r.type.replace(/_/g,' ')+' request ('+fd(r.startDate)+' - '+fd(r.endDate)+') was rejected. Please reapply.','error');
   go(CP);toast('Leave rejected');
 }
 function deleteLeaveRecord(id){
@@ -2112,7 +2342,6 @@ function pgAttSubmit(){
     +'<div style="margin-bottom:10px"><label class="label">Date</label><input class="input" type="date" id="ad" value="'+t+'" max="'+t+'" onchange="attDateChanged()"/></div>'
     +'<div style="margin-bottom:10px"><label class="label">Type</label><select class="input" id="at">'
     +((isSun||isHol)?'':'<option value="present">Present</option>')
-    +'<option value="absent">Absent</option>'
     +((isSun||isHol)?'':'<option value="half_day">Half Day</option>')
     +(isSun?'<option value="sunday_work" selected>Sunday Work (Comp Off)</option>':'')
     +(isHol&&!isSun?'<option value="holiday_work" selected>Holiday Work (Comp Off)</option>':'')
@@ -2129,7 +2358,6 @@ function attDateChanged(){
   var sel=document.getElementById('at');
   if(sel){
     sel.innerHTML=((isSun||isHol)?'':'<option value="present">Present</option>')
-      +'<option value="absent">Absent</option>'
       +((isSun||isHol)?'':'<option value="half_day">Half Day</option>')
       +(isSun?'<option value="sunday_work" selected>Sunday Work (Comp Off)</option>':'')
       +(isHol&&!isSun?'<option value="holiday_work" selected>Holiday Work (Comp Off)</option>':'');
@@ -2148,6 +2376,7 @@ function submitAtt(){
   var tout=document.getElementById('a_tout')?document.getElementById('a_tout').value:'18:00';
   if(!date){toast('Select a date','err');return;}
   if(!tin||!tout){toast('Check-in and check-out time required','err');return;}
+  if(type==='absent'){toast('Absence can only be marked from Apply Leave','err');return;}
   var lv=leaveOnDate(CU.id,date);
   if(lv){toast('ALREADY SUBMITTED — Leave already applied for this date','err');return;}
   var att=getA();
